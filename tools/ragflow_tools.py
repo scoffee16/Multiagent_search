@@ -46,8 +46,7 @@ def get_assistant_list() -> str:
                     # print(dataset)
                     dataset_names.append(dataset['name']) # 将一个助手的知识库的名字加入到列表中
 
-            # 拼接下当前助手的信息 + 知识库信息
-            # 法律资源小助手  xxxxxx  关联知识库：xx、xxx、xxx
+            # 拼接格式: 助手名称 + 介绍 + 关联知识库列表
             count_chat_info += f"助手名称:{chat.name};功能介绍：{chat.description}; 关联的知识库：{'、'.join(dataset_names)} \n"
         return count_chat_info
     except Exception as e:

@@ -26,7 +26,7 @@ def get_assistant_list():
                 dataset_names.append(dataset['name']) # 将一个助手的知识库的名字加入到列表中
 
         # 拼接下当前助手的信息 + 知识库信息
-        # 法律资源小助手  xxxxxx  关联知识库：xx、xxx、xxx
+        # 拼接格式: 助手名称 + 介绍 + 关联知识库
         count_chat_info += f"助手名称:{chat.name};功能介绍：{chat.description}; 关联的知识库：{'、'.join(dataset_names)} \n"
     # 4. 拼接助手和知识库信息，返回供模型参考（lm知道你哪个助手干啥事，可以调用对应的助手）
     return count_chat_info
@@ -68,4 +68,4 @@ def ask_question(chat_name,question):
 
 if __name__ == '__main__':
     print(get_assistant_list())
-    print(ask_question("法律援助助手", "我把人打残疾了怎么办！"))
+    print(ask_question("你的助手名称", "你的问题"))

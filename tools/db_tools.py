@@ -204,7 +204,7 @@ def execute_sql_query(query)->str:
 
 
 if __name__ == "__main__":
-    print(execute_sql_query("SELECT * FROM `drugs` dgs join sales_records srd on dgs.drug_id = srd.drug_id"))
+    print(execute_sql_query("SELECT * FROM orders WHERE category = '数码电子'"))
 
 
 
