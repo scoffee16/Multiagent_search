@@ -1,3 +1,12 @@
+# --- 允许直接运行本文件（python rawflow/chat_assistant_demo.py）：把项目根目录加入 sys.path ---
+# 直接运行子目录脚本时 sys.path[0] 是脚本所在目录，找不到 rawflow/api 包；
+# 被当作模块导入时 __package__ 不为空，这段自动跳过。
+if __name__ == "__main__" and __package__ in (None, ""):
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 # 导入依赖
 from ragflow_sdk import RAGFlow #链接rag服务的客户端
 from rawflow.rag_config import _load_ragflow_env

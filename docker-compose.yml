@@ -20,7 +20,8 @@ services:
       MYSQL_CHARSET: utf8mb4
       MYSQL_COLLATION: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      # 宿主 3307 -> 容器 3306：本机 3306 已被 MySQL80 服务占用
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -36,7 +37,7 @@ services:
     container_name: multiagent-app
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8010:8010"
     env_file:
       - .env
     environment:

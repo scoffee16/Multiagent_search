@@ -47,3 +47,10 @@ tools/test_session_*/
 # ========================
 .DS_Store
 Thumbs.db
+
+# pytest
+.pytest_cache/
+.pytest_tmp/
+
+# 本地桌面客户端修复备份（含真实密钥，禁止入库）
+.sidebar-fix-backup/

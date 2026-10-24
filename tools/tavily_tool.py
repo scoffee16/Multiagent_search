@@ -14,9 +14,22 @@ from utils.retry import retry_with_backoff
 load_dotenv()
 
 # Tavily 客户端（超时 30 秒，防止网络卡死）
-tavily_client = TavilyClient(
-    api_key=os.getenv("TAVILY_API_KEY"),
-)
+# 懒加载：缺 TAVILY_API_KEY 时不要在 import 阶段就抛 MissingAPIKeyError，
+# 否则整个服务（包括不联网的任务）都起不来。
+_tavily_client = None
+
+
+def _get_tavily_client() -> TavilyClient:
+    """首次真正要用联网搜索时才创建客户端。"""
+    global _tavily_client
+    if _tavily_client is None:
+        api_key = os.getenv("TAVILY_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "缺少 TAVILY_API_KEY，联网搜索工具不可用（其余工具不受影响）"
+            )
+        _tavily_client = TavilyClient(api_key=api_key)
+    return _tavily_client
 
 
 # ======================== 带重试的搜索封装 ========================
@@ -32,7 +45,7 @@ def _search_with_retry(query: str, topic: str, max_results: int, include_raw_con
     对 Tavily 搜索调用包装指数退避重试。
     网络抖动或 Tavily 临时不可用时自动重试，最多 3 次。
     """
-    return tavily_client.search(
+    return _get_tavily_client().search(
         query=query,
         topic=topic,
         max_results=max_results,

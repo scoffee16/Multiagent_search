@@ -217,7 +217,7 @@ async def list_files(path: str = None):
     return {"files": files}
 
 
-# 当浏览器请求 ws://localhost:8000/ws/thread_123 时：
+# 当浏览器请求 ws://localhost:8010/ws/thread_123 时：
 # 1. 路由匹配 ：FastAPI 发现这个 URL 匹配了你写的 @app.websocket("/ws/{thread_id}") 。
 # 2. 创建对象 ：FastAPI (基于 Starlette) 会立刻在 主事件循环 中实例化一个 WebSocket 对象。
 #    - 这个对象封装了底层的 TCP 连接、HTTP 握手信息、以及后续的消息收发方法 ( send_text , receive_text 等)。
@@ -269,4 +269,4 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str):
         manager.disconnect(websocket, thread_id)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=8010, reload=False)

@@ -7,7 +7,7 @@
 # 如需 Docker 环境下的 PDF 转换，可切换为 WeasyPrint。
 # ============================================
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="MultiAgent-Search"
 LABEL org.opencontainers.image.description="轻量级多智能体协作系统"
@@ -22,14 +22,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libc6-dev \
     default-libmysqlclient-dev \
     pkg-config \
+    libcairo2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件并安装
 COPY requirements.txt .
-# 跳过 Windows 专用包 (pywin32)，Docker 下不需要
-RUN pip install --no-cache-dir \
-    $(grep -v 'pywin32\|pywin32-300' requirements.txt) && \
-    pip install --no-cache-dir weasyprint
+# 跳过 Windows 专用包 (pywin32)，并滤掉注释行/空行
+# 注意：不能把 grep 结果用 $(...) 直接塞给 pip —— requirements.txt 里的 '#' 注释会被当成包名，
+# 报 "Invalid requirement: '#'"。先落到文件再 -r 安装。
+RUN grep -vE '^[[:space:]]*#|^[[:space:]]*$|pywin32' requirements.txt > /tmp/requirements-docker.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-docker.txt
 
 # 复制项目源码
 COPY . .
@@ -38,11 +40,12 @@ COPY . .
 RUN mkdir -p output updated data
 
 # 暴露端口
-EXPOSE 8000
+EXPOSE 8010
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8010/docs')" || exit 1
 
 # 启动服务
 CMD ["python", "api/server.py"]
+

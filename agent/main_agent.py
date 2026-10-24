@@ -1,8 +1,8 @@
 from agent.subagents.knowledge_base_agent import knowledge_base_agent
 from agent.subagents.database_query_agent import database_query_agent
 from agent.subagents.network_search_agent import network_search_agent
-from langgraph.checkpoint.sqlite import SqliteSaver
-import sqlite3
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+import aiosqlite
 
 # main_agent tool导入
 from tools.markdown_tools import generate_markdown
@@ -26,22 +26,46 @@ from langchain_core.messages import AIMessage
 
 # 持久化 checkpoint：使用 SQLite 替代内存存储
 # 服务重启后对话历史不丢失，支持多轮对话上下文
+#
+# 注意：主智能体走的是异步执行（astream），因此必须使用 AsyncSqliteSaver。
+# AsyncSqliteSaver 的构造函数内部会调用 asyncio.get_running_loop()，
+# 所以它只能在事件循环内部创建 —— 不能再像同步版那样在模块导入时就建好。
+# 这里改成"首次请求时懒加载"，并用锁保证并发首请求只初始化一次。
 checkpoint_db_path = Path(__file__).parents[1] / "data" / "checkpoints.db"
 checkpoint_db_path.parent.mkdir(parents=True, exist_ok=True)
-_conn = sqlite3.connect(str(checkpoint_db_path), check_same_thread=False)
-checkpointer = SqliteSaver(_conn)
 
-main_agent = create_deep_agent(
-   model = model,
-   system_prompt=main_agent_content['system_prompt'],
-   tools= [generate_markdown,convert_md_to_pdf,read_file_content],
-   checkpointer=checkpointer,
-   subagents=[
-       database_query_agent,
-       network_search_agent,
-       knowledge_base_agent
-   ]
-)
+_conn = None                      # aiosqlite.Connection，进程级复用
+checkpointer = None               # AsyncSqliteSaver
+main_agent = None                 # 编译后的图，首次请求时创建
+_agent_lock = asyncio.Lock()      # 防止并发首请求重复初始化
+
+
+async def get_main_agent():
+    """
+    在事件循环内部创建异步 checkpointer 并编译主智能体（只执行一次）。
+
+    建表（setup）由 AsyncSqliteSaver 在首次 aput/aget_tuple 时自动完成，无需手动调用。
+    """
+    global _conn, checkpointer, main_agent
+    if main_agent is not None:
+        return main_agent
+
+    async with _agent_lock:
+        if main_agent is None:
+            _conn = await aiosqlite.connect(str(checkpoint_db_path))
+            checkpointer = AsyncSqliteSaver(_conn)
+            main_agent = create_deep_agent(
+                model=model,
+                system_prompt=main_agent_content['system_prompt'],
+                tools=[generate_markdown, convert_md_to_pdf, read_file_content],
+                checkpointer=checkpointer,
+                subagents=[
+                    database_query_agent,
+                    network_search_agent,
+                    knowledge_base_agent,
+                ],
+            )
+    return main_agent
 
 # 执行
 """
@@ -126,8 +150,10 @@ async def run_deep_agent(task_query,session_id):
     """
     # 反馈结果
     try:
+        # 懒加载：首次请求时在事件循环内建 checkpointer 并编译主智能体
+        agent = await get_main_agent()
         # 执行
-        async for chunk in main_agent.astream({
+        async for chunk in agent.astream({
             "messages":[
                 {
                     "role":"user","content":task_query+path_instruction

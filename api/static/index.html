@@ -140,8 +140,72 @@
   .log-result-block {
     margin-top: 4px; padding: 8px 10px; background: var(--bg); border-radius: 5px;
     border-left: 3px solid var(--purple); font-size: 12px; line-height: 1.6;
-    max-height: 160px; overflow-y: auto; color: var(--text-dim); white-space: pre-wrap;
+    max-height: 200px; overflow-y: auto; color: var(--text-dim); white-space: pre-wrap;
   }
+
+  /* ── 最终结果卡片（重点显示） ── */
+  .result-card {
+    margin: 10px 0 8px; border: 1px solid rgba(99,102,241,.45); border-radius: 12px;
+    background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,.02));
+    box-shadow: 0 0 0 3px rgba(99,102,241,.05), 0 10px 28px rgba(0,0,0,.35);
+    overflow: hidden; animation: resultIn .35s ease;
+  }
+  @keyframes resultIn {
+    from { opacity: 0; transform: translateY(10px) scale(.996); }
+    to   { opacity: 1; transform: none; }
+  }
+  .result-head {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    background: rgba(99,102,241,.16); border-bottom: 1px solid rgba(99,102,241,.28);
+    font-size: 13px; font-weight: 700; letter-spacing: .3px;
+  }
+  .result-head .badge {
+    display: inline-flex; align-items: center; gap: 6px; color: #c7d2fe;
+    background: rgba(99,102,241,.25); border: 1px solid rgba(99,102,241,.45);
+    padding: 3px 10px; border-radius: 999px; font-size: 12px;
+  }
+  .result-head .meta { color: var(--text-dim); font-weight: 500; font-size: 12px; margin-left: auto; }
+  .result-head .btn { padding: 4px 10px; font-size: 11px; }
+  .result-body {
+    padding: 18px 22px; font-size: 14.5px; line-height: 1.85; color: var(--text);
+    max-height: 58vh; overflow-y: auto;
+  }
+  .result-card.collapsed .result-body { display: none; }
+  .result-body h1.md-h { font-size: 19px; margin: 2px 0 10px; }
+  .result-body h2.md-h {
+    font-size: 17px; margin: 18px 0 8px; padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .result-body h3.md-h { font-size: 15.5px; margin: 14px 0 6px; }
+  .result-body h4.md-h, .result-body h5.md-h, .result-body h6.md-h { font-size: 14.5px; margin: 12px 0 6px; }
+  .result-body .md-h { color: #eef2ff; font-weight: 700; line-height: 1.45; }
+  .result-body p { margin: 8px 0; }
+  .result-body ul, .result-body ol { margin: 8px 0 8px 22px; }
+  .result-body li { margin: 4px 0; }
+  .result-body code {
+    background: rgba(255,255,255,.09); padding: 1.5px 5px; border-radius: 4px; font-size: 13px;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; color: #a5b4fc;
+  }
+  .result-body pre {
+    background: #0b0d14; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto; margin: 12px 0;
+  }
+  .result-body pre code { background: none; padding: 0; color: #cbd5e1; font-size: 12.5px; line-height: 1.7; }
+  .result-body table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; }
+  .result-body th, .result-body td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; }
+  .result-body th { background: rgba(255,255,255,.05); font-weight: 600; }
+  .result-body blockquote {
+    border-left: 3px solid var(--accent); margin: 10px 0; padding: 6px 12px;
+    color: var(--text-dim); background: rgba(99,102,241,.07); border-radius: 0 6px 6px 0;
+  }
+  .result-body hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .result-body a { color: #7dd3fc; }
+  .error-card { border-color: rgba(239,68,68,.5); background: rgba(239,68,68,.08); box-shadow: none; }
+  .error-card .result-head { background: rgba(239,68,68,.16); border-bottom-color: rgba(239,68,68,.3); }
+  .error-card .result-head .badge {
+    color: #fecaca; background: rgba(239,68,68,.25); border-color: rgba(239,68,68,.45);
+  }
+  .error-card .result-body { color: #fecaca; }
 
   /* ── file panel ── */
   .file-panel {
@@ -333,28 +397,158 @@ function renderTabs() {
   }).join('');
 }
 
+// ── 迷你 Markdown 渲染（够用即可，不引第三方库） ──
+function inlineMd(s) {
+  return s
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+}
+
+function mdToHtml(md) {
+  const lines = escapeHtml(md || '').split(/\r?\n/);
+  const out = [];
+  let i = 0, inUl = false, inOl = false, inCode = false;
+  let codeBuf = [];
+  const closeLists = () => {
+    if (inUl) { out.push('</ul>'); inUl = false; }
+    if (inOl) { out.push('</ol>'); inOl = false; }
+  };
+  while (i < lines.length) {
+    const raw = lines[i];
+    const line = raw.replace(/\s+$/, '');
+    if (/^\s*```/.test(line)) {
+      if (!inCode) { closeLists(); inCode = true; codeBuf = []; }
+      else { out.push(`<pre><code>${codeBuf.join('\n')}</code></pre>`); inCode = false; }
+      i++; continue;
+    }
+    if (inCode) { codeBuf.push(raw); i++; continue; }
+    if (!line.trim()) { closeLists(); i++; continue; }
+
+    // 表格：本行含 | 且下一行是分隔行
+    if (line.includes('|') && i + 1 < lines.length && /^\s*\|?[\s:|-]*-[\s:|-]*$/.test(lines[i + 1])) {
+      closeLists();
+      const cells = r => r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => inlineMd(c.trim()));
+      const head = cells(line);
+      i += 2;
+      const rows = [];
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim()) { rows.push(cells(lines[i])); i++; }
+      out.push('<table><thead><tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>'
+        + rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table>');
+      continue;
+    }
+
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { closeLists(); const lv = h[1].length; out.push(`<h${lv} class="md-h">${inlineMd(h[2])}</h${lv}>`); i++; continue; }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { closeLists(); out.push('<hr>'); i++; continue; }
+    if (/^(&gt;|>)\s?/.test(line)) {
+      closeLists();
+      out.push(`<blockquote>${inlineMd(line.replace(/^(&gt;|>)\s?/, ''))}</blockquote>`); i++; continue;
+    }
+
+    const ul = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (ul) {
+      if (inOl) { out.push('</ol>'); inOl = false; }
+      if (!inUl) { out.push('<ul>'); inUl = true; }
+      out.push(`<li>${inlineMd(ul[1])}</li>`); i++; continue;
+    }
+    const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (ol) {
+      if (inUl) { out.push('</ul>'); inUl = false; }
+      if (!inOl) { out.push('<ol>'); inOl = true; }
+      out.push(`<li>${inlineMd(ol[1])}</li>`); i++; continue;
+    }
+    closeLists();
+    out.push(`<p>${inlineMd(line)}</p>`);
+    i++;
+  }
+  if (inCode) out.push(`<pre><code>${codeBuf.join('\n')}</code></pre>`);
+  closeLists();
+  return out.join('\n');
+}
+
 // ── 日志渲染 ──
 function renderLog(session) {
   const area = $('#logArea');
+  const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
+
   if (!session || session.logs.length === 0) {
     area.innerHTML = `<div class="empty-state"><div class="icon">📋</div><div>${session ? '等待 Agent 响应...' : '发送一个任务开始调试'}</div></div>`;
     return;
   }
-  area.innerHTML = session.logs.map(l => {
+
+  area.innerHTML = session.logs.map((l, idx) => {
     const t = tagMap[l.event] || tagMap.tool_start;
-    const resultBlock = l.data?.result
-      ? `<div class="log-result-block">${escapeHtml(l.data.result.substring(0, 800))}${l.data.result.length > 800 ? '…' : ''}</div>`
-      : '';
-    return `<div class="log-entry">
-      <div class="log-dot ${t.dot}"></div>
+    const head = `<div class="log-dot ${t.dot}"></div>
       <div class="log-body">
         <span class="log-tag ${t.tag}">${t.text}</span>
-        <span class="log-msg">${escapeHtml(l.message)}</span>
-        ${resultBlock}
-        <div class="log-time">${fmtTime(l.timestamp)}</div>
-      </div>
-    </div>`;
+        <span class="log-msg">${escapeHtml(l.message)}</span>`;
+    const tail = `<div class="log-time">${fmtTime(l.timestamp)}</div></div></div>`;
+
+    // ① 最终结果：大卡片 + Markdown 渲染
+    if (l.event === 'task_result' && l.data?.result) {
+      const text = String(l.data.result);
+      const cid = `rc_${session.id}_${idx}`;
+      return `<div class="log-entry">${head}
+        <div class="result-card" id="${cid}">
+          <div class="result-head">
+            <span class="badge">🏁 最终分析结果</span>
+            <span class="meta">${text.length} 字符${l.data.files ? ' · ' + l.data.files + ' 个文件' : ''}</span>
+            <button class="btn btn-ghost btn-toggle" onclick="toggleResult('${cid}')">折叠</button>
+            <button class="btn btn-ghost btn-copy" onclick="copyResult('${cid}')">复制全文</button>
+          </div>
+          <div class="result-body">${mdToHtml(text)}</div>
+        </div>${tail}`;
+    }
+
+    // ② 错误：红色卡片
+    if (l.event === 'error') {
+      return `<div class="log-entry">${head}
+        <div class="result-card error-card">
+          <div class="result-head"><span class="badge">执行失败</span></div>
+          <div class="result-body"><p>${escapeHtml(l.message)}</p></div>
+        </div>${tail}`;
+    }
+
+    // ③ 工具/调度等中间过程：保持紧凑
+    const resultBlock = l.data?.result
+      ? `<div class="log-result-block">${escapeHtml(String(l.data.result).substring(0, 800))}${String(l.data.result).length > 800 ? '…' : ''}</div>`
+      : '';
+    return `<div class="log-entry">${head}${resultBlock}${tail}`;
   }).join('');
+
+  if (atBottom) area.scrollTop = area.scrollHeight;
+}
+
+// ── 结果卡片交互 ──
+function toggleResult(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  card.classList.toggle('collapsed');
+  const btn = card.querySelector('.btn-toggle');
+  if (btn) btn.textContent = card.classList.contains('collapsed') ? '展开' : '折叠';
+}
+
+async function copyResult(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  const body = card.querySelector('.result-body');
+  const txt = body ? body.innerText : '';
+  try {
+    await navigator.clipboard.writeText(txt);
+  } catch (_) {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (__) {}
+    document.body.removeChild(ta);
+  }
+  const btn = card.querySelector('.btn-copy');
+  if (btn) {
+    const old = btn.textContent;
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => { btn.textContent = old; }, 1400);
+  }
 }
 
 // ── 发送任务 ──
