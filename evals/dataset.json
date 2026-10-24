@@ -1,0 +1,29 @@
+{
+  "_comment": "评测集：20 题，4 类各 5 题。expect 的每个内层数组是『任一命中即可』，外层全部命中才算通过。答案基于本地 orders 表（8 条）+ 知识库（README/study-plan/orders-demo）。",
+  "version": 1,
+  "cases": [
+    {"id": "db-01", "category": "查库", "question": "orders 表里一共有多少条订单记录？只给数字。", "expect": [["8"]]},
+    {"id": "db-02", "category": "查库", "question": "orders 表里哪个品类的订单数最多？", "expect": [["数码电子"]]},
+    {"id": "db-03", "category": "查库", "question": "orders 表所有订单的 total_amount 总和是多少？", "expect": [["39572", "39,572"]]},
+    {"id": "db-04", "category": "查库", "question": "orders 表里金额最高的订单号是哪一个？", "expect": [["ord2026002"]]},
+    {"id": "db-05", "category": "查库", "question": "orders 表的 status 字段有哪几种取值？", "expect": [["completed", "已完成"]]},
+
+    {"id": "rag-01", "category": "查文档", "question": "按内部订单分析 SOP，样本量少于多少笔时不允许做趋势推断？", "expect": [["30"]]},
+    {"id": "rag-02", "category": "查文档", "question": "按内部 SOP，清库存的一级预警判定标准是什么？", "expect": [["90"]]},
+    {"id": "rag-03", "category": "查文档", "question": "内部 SOP 里 AOV（客单价）的计算口径是什么？", "expect": [["gmv", "销售额", "总金额"], ["订单数", "订单量"]]},
+    {"id": "rag-04", "category": "查文档", "question": "根据数据字典，orders 表里哪些订单状态不计入 GMV？", "expect": [["取消", "cancelled"], ["退款", "refunded"]]},
+    {"id": "rag-05", "category": "查文档", "question": "orders 表的 status 字段默认值是什么？", "expect": [["completed", "已完成"]]},
+
+    {"id": "web-01", "category": "联网", "question": "2024 年诺贝尔物理学奖授予了哪两位科学家？", "expect": [["hopfield"], ["hinton"]]},
+    {"id": "web-02", "category": "联网", "question": "Docker Desktop 在 Windows 上默认使用什么虚拟化后端？", "expect": [["wsl"]]},
+    {"id": "web-03", "category": "联网", "question": "Python 3.12 稳定版是哪一年发布的？", "expect": [["2023"]]},
+    {"id": "web-04", "category": "联网", "question": "DeepSeek 的 API 兼容哪家公司的接口协议？", "expect": [["openai"]]},
+    {"id": "web-05", "category": "联网", "question": "RAGFlow 这个项目是做什么的？一句话说明。", "expect": [["rag", "检索增强"]]},
+
+    {"id": "mix-01", "category": "综合", "question": "结合知识库和数据库回答：本项目默认端口是多少，orders 表一共多少条记录？", "expect": [["8010"], ["8"]]},
+    {"id": "mix-02", "category": "综合", "question": "orders 表里各品类的订单数和总金额分别是多少？请用表格给出。", "expect": [["数码电子"], ["39572", "39,572"]]},
+    {"id": "mix-03", "category": "综合", "question": "根据知识库，启动本项目 API 服务的命令是什么？", "expect": [["api/server.py"]]},
+    {"id": "mix-04", "category": "综合", "question": "orders 表里最早和最晚的订单分别发生在哪一天？", "expect": [["2026-01-15"], ["2026-07-01"]]},
+    {"id": "mix-05", "category": "综合", "question": "本项目的三个子智能体分别负责什么？请结合知识库说明。", "expect": [["数据"], ["报告"]]}
+  ]
+}
