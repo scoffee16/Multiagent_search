@@ -54,3 +54,8 @@ Thumbs.db
 
 # 本地桌面客户端修复备份（含真实密钥，禁止入库）
 .sidebar-fix-backup/
+
+# 个人学习笔记（仅本地自己看，不入库）
+study-plan.md
+multiagent_learn/
+interview-prep.md
