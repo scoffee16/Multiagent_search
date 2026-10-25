@@ -137,19 +137,19 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxx
 python api/server.py
 ```
 
-打开浏览器访问 `http://localhost:8000` — 内置调试页面，支持多会话标签页。
+打开浏览器访问 `http://localhost:8010` — 内置调试页面，支持多会话标签页。
 
-或者访问 `http://localhost:8000/docs` 用 Swagger 直接调 API。
+或者访问 `http://localhost:8010/docs` 用 Swagger 直接调 API。
 
 ### 4. 试一试
 
 ```bash
-curl -X POST http://localhost:8000/api/task \
+curl -X POST http://localhost:8010/api/task \
   -H "Content-Type: application/json" \
   -d '{"query": "搜索最近AI Agent领域的最新进展"}'
 ```
 
-WebSocket 实时进度：`ws://localhost:8000/ws/{返回的 thread_id}`
+WebSocket 实时进度：`ws://localhost:8010/ws/{返回的 thread_id}`
 
 ### 🎬 Demo
 
@@ -268,13 +268,60 @@ MultiAgent-Search/
 | 层级 | 技术 | 说明 |
 |------|------|------|
 | Agent 框架 | deepagents (LangChain 官方) | 多智能体编排 |
-| 图编排 | LangGraph + SqliteSaver | 状态图 + 对话持久化 |
+| 图编排 | LangGraph + AsyncSqliteSaver | 状态图 + 异步对话持久化 |
 | LLM 接入 | LangChain + OpenAI 兼容协议 | 一套代码适配多种模型 |
 | Web 框架 | FastAPI + Uvicorn | 异步 HTTP + 原生 WebSocket |
 | 搜索引擎 | Tavily API | AI 专用搜索，免费额度 |
 | 知识库 | RAGFlow | 开源 RAG 引擎 |
-| 数据库 | MySQL | Agent 自动写 SQL |
-| 文档生成 | markdown + WeasyPrint | MD 生成 + PDF 转换 |
+| 数据库 | MySQL | Agent 自动写 SQL（带只读守卫） |
+| 文档生成 | markdown + Word COM/WeasyPrint | MD 生成 + PDF 转换（Windows 走 Word） |
+
+---
+
+## 🧪 评测与测试
+
+### 端到端评测（20 题 / 4 类）
+
+`evals/dataset.json` 是 20 道题的评测集，覆盖查库、查文档、联网、综合四类；
+`evals/run_eval.py` 走真实链路（HTTP 提交 + WebSocket 收事件）跑完打分，
+判分用确定性关键词组，不引入 LLM 裁判，结果可复现、不额外花钱。
+
+| 指标 | 结果 |
+| --- | --- |
+| 通过率 | **20/20（100%）**，四类各 5/5 |
+| 延迟 | P50 **8.3s**，P95 28.2s，最大 28.4s |
+| 工具调用 | 平均 **3.2 次/题**，最多 7 次 |
+| 输出规模 | 平均 488 字（≈325 tokens，按中文 1.5 字/token 估算） |
+
+复现方式：
+
+```bash
+python api/server.py                 # 另开一个窗口把服务起起来
+python evals/run_eval.py             # 全量 20 题
+python evals/run_eval.py --category 查库 --limit 3   # 只跑一部分
+```
+
+报告写入 `evals/report.md` / `evals/report.json`；首轮（18/20，查文档类因题集与智能体业务边界不匹配而失分）保存在 `evals/report-round1.md`，可与新报告对比。
+
+> 已知局限：联网类 5 题模型直接凭参数化知识作答、没有触发 Tavily 工具（`tool_calls=0`），
+> 因此该类别证明的是「答得对」，不代表「联网链路被验证过」。
+
+### 单元测试
+
+```bash
+pytest -q      # 53 passed
+```
+
+| 测试文件 | 覆盖内容 |
+| --- | --- |
+| `tests/test_monitor_events.py` | 事件总线 6 类事件的 payload、时间戳、无 runtime/无 WS 时降级 |
+| `tests/test_path_utils.py` | 虚拟前缀清洗、session 嵌套防护、updated/ 重定向、`..` 越界拦截 |
+| `tests/test_sql_guard.py` | SQL 只读守卫：写操作、多语句、关键字出现在字面量里的误判 |
+
+### CI
+
+`.github/workflows/ci.yml` 三个检查关（lint / syntax / test）并行跑，全绿后才构建 Docker 镜像。
+lint 分两道闸：全仓只拦 E9/F63/F7/F82 这类真错误，新代码（`tests/`、`evals/`）按全量规则 + 格式化严格执行。
 
 ---
 

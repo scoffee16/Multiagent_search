@@ -4,11 +4,6 @@ from typing import Optional
 
 
 def resolve_path(filename: str, session_dir: Optional[str] = None) -> str:
-    import os
-from pathlib import Path
-from typing import Optional
-
-def resolve_path(filename: str, session_dir: Optional[str] = None) -> str:
     """
     统一的文件路径解析工具方法。
 
@@ -66,6 +61,14 @@ def resolve_path(filename: str, session_dir: Optional[str] = None) -> str:
 
     session_path = Path(session_dir).resolve()
     session_name = session_path.name
+
+    # 3. 防御：相对路径里带 .. 时，不允许落到会话目录之外
+    #    （文件名可能来自模型或用户输入，../../ 直接拼过去会读写到别的目录）
+    if ".." in Path(path_str).parts:
+        candidate = (session_path / path).resolve()
+        if candidate != session_path and session_path not in candidate.parents:
+            raise ValueError(f"拒绝访问：路径越出会话目录 -> {path_str}")
+        return str(candidate)
 
     # 3. 结合 Session Context
 
