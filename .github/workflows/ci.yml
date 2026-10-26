@@ -24,7 +24,7 @@ jobs:
       - name: Install ruff
         run: pip install "ruff>=0.9"
 
-      # 老代码是教程风格，全量 E/W/UP 规则暂时过不了；这里分两道闸门：
+      # 存量代码是早期版本风格，全量 E/W/UP 规则暂时过不了；这里分两道闸门：
       #   1) 全仓只拦「真错误」（语法错误、未定义名、重复定义等）
       #   2) 新代码（tests/ evals/）按全量规则 + 格式化严格执行
       - name: Ruff check (repo-wide hard errors)

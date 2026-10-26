@@ -1,28 +1,48 @@
 <p align="center">
   <h1 align="center">🤖 MultiAgent-Search</h1>
-  <p align="center"><b>轻量级多智能体协作系统 —— AI Agent 开发入门实战项目</b></p>
+  <p align="center"><b>面向电商运营分析的多智能体协作系统 · 个人项目</b></p>
   <p align="center">
-    <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python">
+    <img src="https://img.shields.io/badge/Python-3.12+-blue.svg" alt="Python">
     <img src="https://img.shields.io/badge/FastAPI-0.129-green.svg" alt="FastAPI">
     <img src="https://img.shields.io/badge/LangGraph-1.0-orange.svg" alt="LangGraph">
     <img src="https://img.shields.io/badge/deepagents-0.4-purple.svg" alt="deepagents">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License">
-    <img src="https://img.shields.io/badge/适合-学习练手-brightgreen.svg" alt="learning">
   </p>
 </p>
 
 ---
 
-## 🎯 这是什么
+## 📌 项目简介
 
-一个 **不到 1000 行代码** 的 AI Agent 学习项目。用最精简的方式展示如何基于 LangChain 生态构建**多智能体协作系统** — 一个"主智能体"像团队负责人一样调度三个"子智能体"（网络搜索、数据库查询、知识库检索）协同完成复杂任务。
+MultiAgent-Search 是我个人开发并维护的一个**多智能体协作分析系统**。它围绕电商运营里每天都会遇到的取数问题，把「查数据库、查内部资料、查外部信息」三件事收进同一个对话入口：
 
-**如果你是这样的人，这项目就是为你准备的 👇**
+- 🧭 **主智能体**：理解需求、拆解任务、决定调用哪些子智能体，最后汇总成 Markdown 报告；
+- 🔎 **网络搜索子智能体**：通过 Tavily 抓取外部信息（行业动态、竞品动作、消费者趋势）；
+- 🗄 **数据库查询子智能体**：把自然语言转成 SQL，查询 MySQL 中的订单与经营数据；
+- 📚 **知识库子智能体**：在 RAGFlow 中检索内部 SOP、数据字典等文档；
+- 🌐 **Web 服务**：FastAPI 提供 HTTP 接口与 WebSocket 实时进度，浏览器页面可直接对话，报告可导出 PDF。
 
-- 正在学 LangChain / LangGraph，想找一个**完整、能跑**的实战项目
-- 对"多智能体编排"感兴趣，但不想一上来就看复杂的 AutoGPT / CrewAI 源码
-- 想理解 **FastAPI + WebSocket + Agent** 怎么组合成一个真实可用的系统
-- 面试前需要一个 AI Agent 项目充实简历，并且能讲清楚每个设计决策
+设计目标是「轻量、可读、可扩展」：核心链路约 1600 行 Python（含测试与评测脚本约 2500 行），单进程即可跑起来；MySQL、RAGFlow 都是可选项，缺任何一个系统会自动降级，而不是整体不可用。
+
+> 项目定位：个人工具型项目，不是生产级 SaaS。优先保证链路完整、行为可观测、结果可复现，方便按需裁剪与继续扩展。
+
+---
+
+## ✨ 主要能力
+
+| 能力 | 实现位置 | 说明 |
+| --- | --- | --- |
+| 多智能体编排 | `agent/main_agent.py` | 主智能体按需求调度 3 个子智能体，流式执行并汇总结果 |
+| 实时进度推送 | `api/monitor.py` | WebSocket 事件总线，前端逐条看到「思考 / 工具调用 / 结果」 |
+| 协程级会话隔离 | `api/context.py` | ContextVar 隔离并发请求的上下文，多会话互不串台 |
+| 异步后台任务 | `api/server.py` | `POST /api/task` 立即返回 thread_id，任务用 `asyncio.create_task` 在后台执行 |
+| NL2SQL + 只读守卫 | `tools/db_tools.py` | 自然语言查库；写操作、多语句、注释绕过都会被拦截 |
+| 知识库检索 | `tools/ragflow_tools.py` | 封装 RAGFlow SDK，检索内部文档并返回引用 |
+| 联网搜索 | `tools/tavily_tool.py` | Tavily 搜索，带超时重试与指数退避 |
+| 文件读写安全 | `utils/path_utils.py` | 覆盖 12 类路径场景，拦截 `..` 越界与虚拟前缀 |
+| 报告输出 | `tools/markdown_tools.py` / `tools/pdf_tools.py` | 生成 Markdown，可转 PDF（Windows 走 Word COM，Linux/容器可切 WeasyPrint） |
+| 端到端评测 | `evals/run_eval.py` | 20 题、四类场景、确定性判分，结果可复现 |
+| 持续集成 | `.github/workflows/ci.yml` | lint / syntax / test 三关并行，全绿后构建 Docker 镜像 |
 
 ---
 
@@ -51,7 +71,7 @@ graph TD
     style SA3 fill:#fce4ec,stroke:#c62828
 ```
 
-### 请求流程图
+### 一次请求的执行流程
 
 ```mermaid
 sequenceDiagram
@@ -72,17 +92,17 @@ sequenceDiagram
     A->>M: "正在分析需求..."
     M-->>U: 实时推送
 
-    A->>T1: "搜索最新AI动态"
+    A->>T1: "搜索最新 AI 动态"
     T1->>M: "调用网络搜索工具..."
     M-->>U: 实时推送
     T1-->>A: 搜索结果
 
     A->>T2: "查询历史数据"
-    T2->>M: "执行SQL查询..."
+    T2->>M: "执行 SQL 查询..."
     M-->>U: 实时推送
     T2-->>A: 查询结果
 
-    A->>M: "正在生成Markdown报告..."
+    A->>M: "正在生成 Markdown 报告..."
     M-->>U: 实时推送
     A-->>S: 任务完成
     M-->>U: "✅ 报告已生成"
@@ -90,11 +110,11 @@ sequenceDiagram
 
 ### 数据流
 
-1. 用户 `POST /api/task` 发自然语言请求
-2. 主智能体分析需求，决定调用哪些子智能体
-3. 子智能体各司其职 — 搜网络 / 查数据库 / 翻知识库
-4. 主智能体汇总信息，生成 Markdown 报告（可转 PDF）
-5. 全过程经 WebSocket 实时推送前端
+1. 用户 `POST /api/task` 发自然语言请求；
+2. 主智能体分析需求，决定调用哪些子智能体；
+3. 子智能体各司其职 — 搜网络 / 查数据库 / 翻知识库；
+4. 主智能体汇总信息，生成 Markdown 报告（可转 PDF）；
+5. 全过程经 WebSocket 实时推送前端。
 
 ---
 
@@ -102,17 +122,18 @@ sequenceDiagram
 
 ### 环境要求
 
-- **Python 3.10+**
-- OpenAI 兼容的 LLM API Key（DeepSeek / 通义千问 / OpenAI 均可）
-- Tavily API Key（[免费注册](https://tavily.com)，每月 1000 次）
+- **Python 3.12+**（依赖里的 `ragflow-sdk==0.23.1` 要求 ≥ 3.12，本地在 3.13 上验证）
+- 一个 OpenAI 兼容的 LLM API Key（DeepSeek / 通义千问 / OpenAI 均可）
+- Tavily API Key（[免费注册](https://tavily.com)，每月 1000 次额度）
+- 可选：MySQL 8（订单数据）、RAGFlow（内部知识库）
 
 > 📌 数据库和 RAGFlow 是可选的，不配也能跑 — 主智能体会自动跳过没有的服务。
 
 ### 1. 克隆并安装
 
 ```bash
-git clone https://github.com/你的用户名/MultiAgent-Search.git
-cd MultiAgent-Search
+git clone https://github.com/scoffee16/Multiagent_search.git
+cd Multiagent_search
 pip install -r requirements.txt
 ```
 
@@ -122,7 +143,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-编辑 `.env`，最少填 3 个：
+编辑 `.env`，最少填 4 个：
 
 ```env
 OPENAI_BASE_URL=https://api.deepseek.com/v1
@@ -137,51 +158,51 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxx
 python api/server.py
 ```
 
-打开浏览器访问 `http://localhost:8010` — 内置调试页面，支持多会话标签页。
-
-或者访问 `http://localhost:8010/docs` 用 Swagger 直接调 API。
+- 浏览器访问 `http://127.0.0.1:8010` — 内置调试页面，支持多会话标签页；
+- 访问 `http://127.0.0.1:8010/docs` 可用 Swagger 直接调 API；
+- 服务监听 8010 端口。本地访问建议用 `127.0.0.1` 而不是 `0.0.0.0`，并把 `localhost;127.0.0.1;::1` 加入系统代理绕行列表，否则容易出现「终端没有请求日志、浏览器也打不开」的情况。
 
 ### 4. 试一试
 
 ```bash
-curl -X POST http://localhost:8010/api/task \
+curl -X POST http://127.0.0.1:8010/api/task \
   -H "Content-Type: application/json" \
-  -d '{"query": "搜索最近AI Agent领域的最新进展"}'
+  -d '{"query": "统计一下最近一批订单的品类占比"}'
 ```
 
-WebSocket 实时进度：`ws://localhost:8010/ws/{返回的 thread_id}`
+WebSocket 实时进度：`ws://127.0.0.1:8010/ws/{返回的 thread_id}`
 
-### 🎬 Demo
+### HTTP 接口一览
 
-<!-- TODO: 替换为你的 Demo GIF -->
-![Demo](docs/demo.gif)
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/` | 内置调试页面 |
+| POST | `/api/task` | 提交任务（JSON: `{"query": "..."}`），返回 `thread_id` |
+| POST | `/api/upload` | 上传文件到指定会话，供 Agent 读取 |
+| GET | `/api/files` | 列出会话上传/生成的文件 |
+| GET | `/api/download` | 下载生成的文件（Markdown / PDF） |
+| WS | `/ws/{thread_id}` | 实时事件推送（思考、工具调用、结果、完成） |
 
----
+### Docker 部署（可选）
 
-## 📖 你能学到什么
+```bash
+cp .env.example .env        # 先填好配置
+docker compose up -d        # 同时启动 MySQL 与应用
+```
 
-| 知识点 | 项目中的体现 |
-|--------|------------|
-| **Orchestrator 多智能体模式** | `agent/main_agent.py` — 主智能体调度 3 个子智能体 |
-| **Prompt Engineering** | `prompt/prompts.yml` — system_prompt 约束 Agent 行为 |
-| **LangChain @tool 自定义工具** | `tools/` — 8 个工具函数的完整写法 |
-| **FastAPI 异步后台任务** | `api/server.py` — `asyncio.create_task` 非阻塞执行 |
-| **WebSocket 实时推送** | `api/monitor.py` — 工具调用进度实时推前端 |
-| **ContextVar 协程隔离** | `api/context.py` — 多用户并发数据不串台 |
-| **文件操作安全** | `utils/path_utils.py` — 12 种路径场景防护 |
-| **RAG 知识库对接** | `tools/ragflow_tools.py` — RAGFlow SDK 实战 |
-| **NL2SQL 自然语言查库** | `tools/db_tools.py` — Agent 自动写 SQL 执行 |
-| **对话持久化** | `agent/main_agent.py` — SqliteSaver checkpointer |
+- `Dockerfile` 基于 `python:3.12-slim`，`docker-compose.yml` 里 MySQL 与应用各一个服务；
+- Word COM（`pywin32`）仅在 Windows 可用，容器内 PDF 转换需改用 WeasyPrint；
+- MySQL 容器把宿主 3307 映射到容器 3306（本机 3306 常被已有 MySQL 服务占用），初始化脚本为 `sql/init.sql`。
 
 ---
 
 ## 📁 项目结构
 
 ```
-MultiAgent-Search/
+Multiagent_search/
 │
 ├── agent/                          # 🤖 智能体层（核心）
-│   ├── llm.py                      # 模型初始化（10 行）
+│   ├── llm.py                      # 模型初始化
 │   ├── prompts.py                  # YAML 提示词加载器
 │   ├── main_agent.py               # ★ 主智能体 + 异步执行引擎
 │   └── subagents/
@@ -193,8 +214,7 @@ MultiAgent-Search/
 │   ├── server.py                   # FastAPI 入口 + 路由
 │   ├── context.py                  # ContextVar 协程隔离
 │   ├── monitor.py                  # WebSocket 连接池 + 埋点监控
-│   └── static/
-│       └── index.html              # 前端调试页面
+│   └── static/index.html           # 前端调试页面
 │
 ├── tools/                          # 🔧 工具函数（8 个 @tool）
 │   ├── tavily_tool.py              # 网络搜索（含超时重试）
@@ -209,64 +229,48 @@ MultiAgent-Search/
 │   ├── retry.py                    # 指数退避重试装饰器
 │   └── word_converter.py           # Word COM 引擎
 │
-├── prompt/
-│   └── prompts.yml                 # 提示词配置
+├── prompt/prompts.yml              # 提示词配置
 │
-├── data/
-│   └── checkpoints.db              # SQLite 对话持久化
+├── docs/kb/                        # 📚 知识库示例文档（电商运营场景）
+│   ├── 订单分析口径SOP.md           # GMV/订单数/客单价等指标口径
+│   └── orders数据字典.md           # orders 表结构与枚举定义
 │
+├── evals/                          # 🧪 端到端评测
+│   ├── dataset.json                # 20 题评测集（四类场景）
+│   ├── run_eval.py                 # 评测脚本（HTTP + WebSocket 真实链路）
+│   └── report*.md / report*.json   # 评测报告（首轮 + 最新一轮）
+│
+├── tests/                          # ✅ 单元测试
+│   ├── test_monitor_events.py
+│   ├── test_path_utils.py
+│   └── test_sql_guard.py
+│
+├── scripts/                        # 运维 / 工具脚本
+│   ├── ragflow_provision_demo.py   # RAGFlow 知识库初始化
+│   ├── ragflow_upload_kb_docs.py   # 上传 docs/kb 文档
+│   ├── ragflow_selfcheck_fill.py   # 知识库自检与补文档
+│   ├── e2e_frontend_check.py       # 前端端到端自检
+│   └── setup_ragflow_v0231.ps1     # RAGFlow 0.23.1 环境安装（Windows）
+│
+├── rawflow/                        # RAGFlow 原生 API 调用示例
+├── sql/init.sql                    # MySQL 初始化（建表 + 演示数据）
+│
+├── .github/workflows/ci.yml        # CI：lint / syntax / test / docker
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt                # 依赖清单（版本锁定）
+├── pyproject.toml                  # ruff 配置
+├── pytest.ini
 ├── .env.example                    # 环境变量模板
-├── LICENSE                         # MIT License
-└── README.md
+└── LICENSE                         # MIT License
 ```
-
----
-
-## 📖 推荐阅读顺序
-
-| 顺序 | 文件 | 重点 |
-|------|------|------|
-| 1️⃣ | `agent/llm.py` | LLM 怎么初始化的（10 行） |
-| 2️⃣ | `prompt/prompts.yml` | system_prompt 怎么写、怎么约束 Agent |
-| 3️⃣ | `agent/subagents/network_search_agent.py` | 最简单的子智能体，理解"子智能体 = 字典配置" |
-| 4️⃣ | `tools/tavily_tool.py` | 完整 @tool 写法，埋点怎么做 |
-| 5️⃣ | `agent/main_agent.py` | **核心** — 主智能体怎么 orchestrate、怎么流式执行 |
-| 6️⃣ | `api/server.py` | FastAPI 怎么和 Agent 结合，异步任务怎么触发 |
-| 7️⃣ | `api/monitor.py` | WebSocket 实时推送，事件循环归属判断 |
-| 8️⃣ | `api/context.py` | ContextVar 为什么比全局变量好 |
-| 9️⃣ | `utils/path_utils.py` | Agent 文件安全 — 边界场景大全 |
-
----
-
-## 🧪 练手建议
-
-项目的设计刻意保持简洁，给你留了很多动手空间：
-
-### 入门级（加深理解）
-
-- [ ] **换个模型**：把 DeepSeek 换成通义千问或 GPT，改 `.env` 一行
-- [ ] **加一个子智能体**：比如"天气查询助手"，体验加子智能体要改多少行代码
-- [ ] **改 system_prompt**：把"电商运营分析"换成你自己的业务场景
-
-### 进阶级（工程能力）
-
-- [ ] **加反思机制**：让子智能体执行完后再自我检查，提高准确性
-- [ ] **加 JWT 认证**：给 `/api/task` 加上登录校验
-- [ ] **给子智能体加通信**：让数据库和搜索子智能体互相交换信息
-
-### 挑战级（深入学习）
-
-- [ ] **WeasyPrint 替代 Word COM**：摆脱 Windows 依赖，Linux 也能跑 PDF 转换
-- [ ] **人工审批节点**：敏感操作需用户确认才执行（LangGraph interrupt）
-- [ ] **Docker 化**：写 Dockerfile + docker-compose，一键启动
 
 ---
 
 ## 🔧 技术栈
 
 | 层级 | 技术 | 说明 |
-|------|------|------|
+| --- | --- | --- |
 | Agent 框架 | deepagents (LangChain 官方) | 多智能体编排 |
 | 图编排 | LangGraph + AsyncSqliteSaver | 状态图 + 异步对话持久化 |
 | LLM 接入 | LangChain + OpenAI 兼容协议 | 一套代码适配多种模型 |
@@ -274,7 +278,8 @@ MultiAgent-Search/
 | 搜索引擎 | Tavily API | AI 专用搜索，免费额度 |
 | 知识库 | RAGFlow | 开源 RAG 引擎 |
 | 数据库 | MySQL | Agent 自动写 SQL（带只读守卫） |
-| 文档生成 | markdown + Word COM/WeasyPrint | MD 生成 + PDF 转换（Windows 走 Word） |
+| 文档生成 | Markdown + Word COM / WeasyPrint | MD 生成 + PDF 转换（Windows 走 Word） |
+| 部署 | Docker / Docker Compose | 镜像构建 + 本地一键起服务 |
 
 ---
 
@@ -325,26 +330,55 @@ lint 分两道闸：全仓只拦 E9/F63/F7/F82 这类真错误，新代码（`te
 
 ---
 
-## ❓ FAQ
+## 🧭 设计取舍
 
-### Q: 为什么选 deepagents？
+### Q: 为什么选 deepagents，而不是自己写编排？
 
-**A:** 自己写编排要处理状态管理、tool_call 路由、流式输出、错误恢复等一堆事。`deepagents` 封装好了，你只需定义子智能体的 name / description / tools，框架帮你调度。先理解"用框架能做什么"，再看源码"框架怎么做的"。
-
-### Q: 没有 RAGFlow 和 MySQL 能跑吗？
-
-**A:** 能。主智能体会自动判断可用服务并跳过，只配 LLM + Tavily 就能体验完整链路。这就是刻意设计的"优雅降级"。
+**A:** 自己写编排要处理状态管理、tool_call 路由、流式输出、错误恢复等一堆事。`deepagents` 把「子智能体 = 名称 + 描述 + 工具集」这一层抽象封装好了，我只需要定义子智能体和工具，剩下的调度交给框架。把精力放在业务链路和安全边界上，收益更高。
 
 ### Q: 为什么用 ContextVar 而不是全局变量？
 
 **A:** FastAPI 下多个请求跑在同一线程的不同协程里。用全局变量的话，用户 A 的数据会被用户 B 覆盖（串台）。ContextVar 是 asyncio 原生支持的协程级变量，每个请求链路互不干扰。
 
-### Q: 项目为什么不到 1000 行？
+### Q: 没有 RAGFlow 和 MySQL 能跑吗？
 
-**A:** 故意的。学习项目，不是生产项目。每个模块只做一件事，代码少才容易看懂。把这 1000 行读明白，多智能体 Agent 的核心概念就掌握了。
+**A:** 能。主智能体会自动判断可用服务并跳过，只配 LLM + Tavily 就能体验完整链路。这是刻意设计的「优雅降级」。
+
+### Q: 为什么单进程、代码量不大？
+
+**A:** 这个项目的定位是个人工具，不是 SaaS 平台。单进程省掉了消息队列、服务发现、分布式追踪这类基础设施，部署和排障成本最低；模块之间保持薄边界，需要横向扩展时再把主智能体、子智能体拆成独立服务。
+
+### Q: 评测为什么不用 LLM 裁判？
+
+**A:** 当前题集都是可枚举事实的取数题，关键词组判分确定性强、可复现、不产生额外调用费用，适合做回归基线。开放式问答的评估以后再考虑引入 LLM 裁判或人工标注。
+
+---
+
+## 🗺 Roadmap
+
+- [x] 多智能体主链路（主智能体 + 3 个子智能体）与 WebSocket 实时进度
+- [x] 20 题端到端评测集与确定性判分脚本
+- [x] SQL 只读守卫、路径越界防护、单元测试与 CI 四关
+- [x] Dockerfile / docker-compose 本地一键部署
+- [ ] JWT 登录与多用户配额
+- [ ] 人工审批节点（LangGraph interrupt），敏感操作需确认
+- [ ] 报告归档与会话历史管理
+- [ ] 前端从单文件调试页重构为独立应用
+- [ ] 全平台 PDF 转换（去掉 Word COM 依赖）
+
+---
+
+## 📝 已知限制
+
+- 联网类评测中模型可能凭参数化知识直接作答，`tool_calls=0`，该类别不能证明联网链路被验证过；
+- PDF 转换在 Windows 下依赖 Word COM，容器内需要 WeasyPrint 替代；
+- 当前没有鉴权与多租户配额，默认按单机单用户使用设计；
+- 评测集 20 题，用于回归验收，不等同于全面质量评估。
 
 ---
 
 ## 📄 License
 
-MIT License — 随意使用、修改、分发。基于本项目做了有趣的东西，欢迎提 PR 😄
+MIT License — 随意使用、修改、分发。
+
+作者：scoffee16 ｜ 仓库：[scoffee16/Multiagent_search](https://github.com/scoffee16/Multiagent_search) ｜ 欢迎 Issue / PR。

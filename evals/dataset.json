@@ -1,5 +1,5 @@
 {
-  "_comment": "评测集：20 题，4 类各 5 题。expect 的每个内层数组是『任一命中即可』，外层全部命中才算通过。答案基于本地 orders 表（8 条）+ 知识库（README/study-plan/orders-demo）。",
+  "_comment": "评测集：20 题，4 类各 5 题。expect 的每个内层数组是『任一命中即可』，外层全部命中才算通过。答案基于本地 orders 表（8 条）+ 知识库文档（README / 订单分析口径SOP / orders 数据字典）。",
   "version": 1,
   "cases": [
     {"id": "db-01", "category": "查库", "question": "orders 表里一共有多少条订单记录？只给数字。", "expect": [["8"]]},

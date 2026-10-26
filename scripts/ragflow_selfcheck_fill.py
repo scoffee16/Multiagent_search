@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""自检知识库 + 把项目真实文档（README / study-plan）补进去，然后验证检索。"""
+"""自检知识库 + 把项目 README 补进去，然后验证检索。"""
 import os
 import time
 from pathlib import Path
@@ -27,7 +27,7 @@ for d in ds.list_documents():
         print(f"      chunk> {txt}")
 
 # 补入项目真实文档
-for fn in ("README.md", "study-plan.md"):
+for fn in ("README.md",):
     p = ROOT / fn
     if not p.exists():
         print("skip missing", fn)
