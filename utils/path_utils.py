@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +11,7 @@ def resolve_path(filename: str, session_dir: Optional[str] = None) -> str:
     2. 识别 updated/ 目录，优先相对于项目根目录解析
     3. 结合 session_dir 处理相对/绝对路径，保证路径隔离
     4. 防止路径嵌套 (session_id/session_id)
+    5. 跨平台一致：反斜杠统一按分隔符解析，POSIX 上同样执行越界拦截
 
     场景示例（基于测试环境：Windows系统、session_dir=D:/Project/output/session_123、CWD=D:/Project）：
     | 输入场景                | filename                          | session_dir                      | 核心操作                          | 最终结果                          |
@@ -36,8 +36,10 @@ def resolve_path(filename: str, session_dir: Optional[str] = None) -> str:
     Returns:
         str: 解析后的绝对路径
     """
-    path = Path(filename)
-    path_str = filename.replace("\\", "/")  # 统一处理字符串匹配
+    # 统一按 "/" 解析：反斜杠在 Windows 上是分隔符，在 POSIX 上如果当普通字符处理，
+    # "..\\..\\x" 这类路径会绕过下面的越界检查，两个平台的行为就不一致了。
+    path_str = filename.replace("\\", "/")
+    path = Path(path_str)
 
     # 1. 虚拟路径清洗
     virtual_prefixes = ["/workspace", "/mnt/data", "/home/user"]
@@ -64,7 +66,7 @@ def resolve_path(filename: str, session_dir: Optional[str] = None) -> str:
 
     # 3. 防御：相对路径里带 .. 时，不允许落到会话目录之外
     #    （文件名可能来自模型或用户输入，../../ 直接拼过去会读写到别的目录）
-    if ".." in Path(path_str).parts:
+    if ".." in path.parts:
         candidate = (session_path / path).resolve()
         if candidate != session_path and session_path not in candidate.parents:
             raise ValueError(f"拒绝访问：路径越出会话目录 -> {path_str}")
@@ -76,10 +78,17 @@ def resolve_path(filename: str, session_dir: Optional[str] = None) -> str:
     is_unix_abs = path_str.startswith("/")
 
     # 如果是绝对路径 (Windows带盘符 或 Unix/开头)
-    if path.is_absolute() or (os.name == 'nt' and is_unix_abs):
-        # Windows 特殊情况：以 / 开头但无盘符，视为相对路径
-        if os.name == 'nt' and is_unix_abs and not path.drive:
-            full_path = session_path / path_str.lstrip("/")
+    if path.is_absolute() or is_unix_abs:
+        # 以 / 开头但无盘符的「虚拟绝对路径」：
+        #   - 本身就在会话目录内（例如前端传来的真实绝对路径）：保留原路径，
+        #     交给下面的嵌套检查处理；
+        #   - 不在会话目录内：一律拼回会话目录，Windows / Linux 行为保持一致。
+        if is_unix_abs and not path.drive:
+            candidate = path.resolve()
+            if candidate == session_path or session_path in candidate.parents:
+                full_path = candidate
+            else:
+                full_path = session_path / path_str.lstrip("/")
         else:
             full_path = path.resolve()
 
