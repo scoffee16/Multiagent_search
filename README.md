@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">🤖 MultiAgent-Search</h1>
+  <h1 align="center">MultiAgent-Search</h1>
   <p align="center"><b>面向电商运营分析的多智能体协作系统 · 个人项目</b></p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.12+-blue.svg" alt="Python">
@@ -12,15 +12,15 @@
 
 ---
 
-## 📌 项目简介
+## 项目简介
 
 MultiAgent-Search 是我个人开发并维护的一个**多智能体协作分析系统**。它围绕电商运营里每天都会遇到的取数问题，把「查数据库、查内部资料、查外部信息」三件事收进同一个对话入口：
 
-- 🧭 **主智能体**：理解需求、拆解任务、决定调用哪些子智能体，最后汇总成 Markdown 报告；
-- 🔎 **网络搜索子智能体**：通过 Tavily 抓取外部信息（行业动态、竞品动作、消费者趋势）；
-- 🗄 **数据库查询子智能体**：把自然语言转成 SQL，查询 MySQL 中的订单与经营数据；
-- 📚 **知识库子智能体**：在 RAGFlow 中检索内部 SOP、数据字典等文档；
-- 🌐 **Web 服务**：FastAPI 提供 HTTP 接口与 WebSocket 实时进度，浏览器页面可直接对话，报告可导出 PDF。
+- **主智能体**：理解需求、拆解任务、决定调用哪些子智能体，最后汇总成 Markdown 报告；
+- **网络搜索子智能体**：通过 Tavily 抓取外部信息（行业动态、竞品动作、消费者趋势）；
+- **数据库查询子智能体**：把自然语言转成 SQL，查询 MySQL 中的订单与经营数据；
+- **知识库子智能体**：在 RAGFlow 中检索内部 SOP、数据字典等文档；
+- **Web 服务**：FastAPI 提供 HTTP 接口与 WebSocket 实时进度，浏览器页面可直接对话，报告可导出 PDF。
 
 设计目标是「轻量、可读、可扩展」：核心链路约 1600 行 Python（含测试与评测脚本约 2500 行），单进程即可跑起来；MySQL、RAGFlow 都是可选项，缺任何一个系统会自动降级，而不是整体不可用。
 
@@ -28,7 +28,7 @@ MultiAgent-Search 是我个人开发并维护的一个**多智能体协作分析
 
 ---
 
-## ✨ 主要能力
+## 主要能力
 
 | 能力 | 实现位置 | 说明 |
 | --- | --- | --- |
@@ -46,30 +46,13 @@ MultiAgent-Search 是我个人开发并维护的一个**多智能体协作分析
 
 ---
 
-## 🏗️ 架构
+## 架构
 
 ### 整体架构图
 
-```mermaid
-graph TD
-    U[👤 用户浏览器] -->|POST /api/task| S[FastAPI Server]
-    U <-->|WebSocket /ws/:id| S
-    S -->|asyncio.create_task| MA[主智能体 Orchestrator]
-    MA -->|调度| SA1[子智能体 1<br/>网络搜索]
-    MA -->|调度| SA2[子智能体 2<br/>数据库查询]
-    MA -->|调度| SA3[子智能体 3<br/>RAG知识库]
-    SA1 -->|Tavily API| W[🌐 互联网]
-    SA2 -->|MySQL| D[(数据库)]
-    SA3 -->|RAGFlow SDK| R[📚 知识库]
-    MA -->|生成| MD[Markdown 报告]
-    MD -->|转换| PDF[PDF 文件]
-    S -->|实时推送进度| U
+![MultiAgent-Search 系统架构](docs/images/architecture.png)
 
-    style MA fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style SA1 fill:#fff3e0,stroke:#f57c00
-    style SA2 fill:#e8f5e9,stroke:#388e3c
-    style SA3 fill:#fce4ec,stroke:#c62828
-```
+请求从调试前端进入，FastAPI 服务把任务交给主智能体；主智能体按需调度网络搜索、数据库查询、知识库三个子智能体，最后把结果汇总成 Markdown / PDF 报告，执行过程中的思考、工具调用与结果通过 WebSocket 实时回推前端。
 
 ### 一次请求的执行流程
 
@@ -105,7 +88,7 @@ sequenceDiagram
     A->>M: "正在生成 Markdown 报告..."
     M-->>U: 实时推送
     A-->>S: 任务完成
-    M-->>U: "✅ 报告已生成"
+    M-->>U: "报告已生成"
 ```
 
 ### 数据流
@@ -118,7 +101,7 @@ sequenceDiagram
 
 ---
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
@@ -127,7 +110,7 @@ sequenceDiagram
 - Tavily API Key（[免费注册](https://tavily.com)，每月 1000 次额度）
 - 可选：MySQL 8（订单数据）、RAGFlow（内部知识库）
 
-> 📌 数据库和 RAGFlow 是可选的，不配也能跑 — 主智能体会自动跳过没有的服务。
+> 数据库和 RAGFlow 是可选的，不配也能跑 — 主智能体会自动跳过没有的服务。
 
 ### 1. 克隆并安装
 
@@ -196,27 +179,27 @@ docker compose up -d        # 同时启动 MySQL 与应用
 
 ---
 
-## 📁 项目结构
+## 项目结构
 
 ```
 Multiagent_search/
 │
-├── agent/                          # 🤖 智能体层（核心）
+├── agent/                          # 智能体层（核心）
 │   ├── llm.py                      # 模型初始化
 │   ├── prompts.py                  # YAML 提示词加载器
-│   ├── main_agent.py               # ★ 主智能体 + 异步执行引擎
+│   ├── main_agent.py               # 主智能体 + 异步执行引擎
 │   └── subagents/
 │       ├── network_search_agent.py # 网络搜索子智能体
 │       ├── database_query_agent.py # 数据库查询子智能体
 │       └── knowledge_base_agent.py # 知识库子智能体
 │
-├── api/                            # 🌐 Web 接口层
+├── api/                            # Web 接口层
 │   ├── server.py                   # FastAPI 入口 + 路由
 │   ├── context.py                  # ContextVar 协程隔离
 │   ├── monitor.py                  # WebSocket 连接池 + 埋点监控
 │   └── static/index.html           # 前端调试页面
 │
-├── tools/                          # 🔧 工具函数（8 个 @tool）
+├── tools/                          # 工具函数（8 个 @tool）
 │   ├── tavily_tool.py              # 网络搜索（含超时重试）
 │   ├── db_tools.py                 # 数据库查询三件套
 │   ├── ragflow_tools.py            # RAGFlow 知识库检索
@@ -224,23 +207,25 @@ Multiagent_search/
 │   ├── pdf_tools.py                # Markdown → PDF
 │   └── upload_file_read_tool.py    # 读取上传文件
 │
-├── utils/                          # 🛠 工具层
+├── utils/                          # 工具层
 │   ├── path_utils.py               # 路径安全解析
 │   ├── retry.py                    # 指数退避重试装饰器
 │   └── word_converter.py           # Word COM 引擎
 │
 ├── prompt/prompts.yml              # 提示词配置
 │
-├── docs/kb/                        # 📚 知识库示例文档（电商运营场景）
-│   ├── 订单分析口径SOP.md           # GMV/订单数/客单价等指标口径
-│   └── orders数据字典.md           # orders 表结构与枚举定义
+├── docs/
+│   ├── kb/                         # 知识库示例文档（电商运营场景）
+│   │   ├── 订单分析口径SOP.md       # GMV/订单数/客单价等指标口径
+│   │   └── orders数据字典.md       # orders 表结构与枚举定义
+│   └── images/architecture.png     # 架构图
 │
-├── evals/                          # 🧪 端到端评测
+├── evals/                          # 端到端评测
 │   ├── dataset.json                # 20 题评测集（四类场景）
 │   ├── run_eval.py                 # 评测脚本（HTTP + WebSocket 真实链路）
 │   └── report*.md / report*.json   # 评测报告（首轮 + 最新一轮）
 │
-├── tests/                          # ✅ 单元测试
+├── tests/                          # 单元测试
 │   ├── test_monitor_events.py
 │   ├── test_path_utils.py
 │   └── test_sql_guard.py
@@ -267,7 +252,7 @@ Multiagent_search/
 
 ---
 
-## 🔧 技术栈
+## 技术栈
 
 | 层级 | 技术 | 说明 |
 | --- | --- | --- |
@@ -283,7 +268,7 @@ Multiagent_search/
 
 ---
 
-## 🧪 评测与测试
+## 评测与测试
 
 ### 端到端评测（20 题 / 4 类）
 
@@ -330,31 +315,7 @@ lint 分两道闸：全仓只拦 E9/F63/F7/F82 这类真错误，新代码（`te
 
 ---
 
-## 🧭 设计取舍
-
-### Q: 为什么选 deepagents，而不是自己写编排？
-
-**A:** 自己写编排要处理状态管理、tool_call 路由、流式输出、错误恢复等一堆事。`deepagents` 把「子智能体 = 名称 + 描述 + 工具集」这一层抽象封装好了，我只需要定义子智能体和工具，剩下的调度交给框架。把精力放在业务链路和安全边界上，收益更高。
-
-### Q: 为什么用 ContextVar 而不是全局变量？
-
-**A:** FastAPI 下多个请求跑在同一线程的不同协程里。用全局变量的话，用户 A 的数据会被用户 B 覆盖（串台）。ContextVar 是 asyncio 原生支持的协程级变量，每个请求链路互不干扰。
-
-### Q: 没有 RAGFlow 和 MySQL 能跑吗？
-
-**A:** 能。主智能体会自动判断可用服务并跳过，只配 LLM + Tavily 就能体验完整链路。这是刻意设计的「优雅降级」。
-
-### Q: 为什么单进程、代码量不大？
-
-**A:** 这个项目的定位是个人工具，不是 SaaS 平台。单进程省掉了消息队列、服务发现、分布式追踪这类基础设施，部署和排障成本最低；模块之间保持薄边界，需要横向扩展时再把主智能体、子智能体拆成独立服务。
-
-### Q: 评测为什么不用 LLM 裁判？
-
-**A:** 当前题集都是可枚举事实的取数题，关键词组判分确定性强、可复现、不产生额外调用费用，适合做回归基线。开放式问答的评估以后再考虑引入 LLM 裁判或人工标注。
-
----
-
-## 🗺 Roadmap
+## Roadmap
 
 - [x] 多智能体主链路（主智能体 + 3 个子智能体）与 WebSocket 实时进度
 - [x] 20 题端到端评测集与确定性判分脚本
@@ -368,7 +329,7 @@ lint 分两道闸：全仓只拦 E9/F63/F7/F82 这类真错误，新代码（`te
 
 ---
 
-## 📝 已知限制
+## 已知限制
 
 - 联网类评测中模型可能凭参数化知识直接作答，`tool_calls=0`，该类别不能证明联网链路被验证过；
 - PDF 转换在 Windows 下依赖 Word COM，容器内需要 WeasyPrint 替代；
@@ -377,7 +338,7 @@ lint 分两道闸：全仓只拦 E9/F63/F7/F82 这类真错误，新代码（`te
 
 ---
 
-## 📄 License
+## License
 
 MIT License — 随意使用、修改、分发。
 
