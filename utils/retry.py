@@ -53,7 +53,7 @@ def retry_with_backoff(
                 except exceptions as e:
                     last_exception = e
                     if attempt < max_retries:
-                        # 打印重试信息（生产环境可改为 logging.warning）
+                        # 打印重试信息（需要结构化日志时可替换为 logging）
                         print(
                             f"[Retry] {func.__name__} 调用失败 "
                             f"(第 {attempt + 1}/{max_retries + 1} 次): {e}. "

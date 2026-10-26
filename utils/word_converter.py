@@ -1,3 +1,5 @@
+"""Word COM 引擎：在 Windows 下把 Markdown 转成 PDF（容器内改用 WeasyPrint）。"""
+
 import logging
 import os
 from pathlib import Path

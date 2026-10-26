@@ -1,3 +1,5 @@
+"""事件监控与 WebSocket 连接管理：工具进度上报、事件落库与实时推送前端。"""
+
 import sys
 import datetime
 import asyncio

@@ -1,3 +1,5 @@
+"""RAGFlow 原生 API 示例的配置读取：从 .env 加载 API Key 与服务地址。"""
+
 import os
 from dotenv import load_dotenv
 from typing import Tuple, Optional

@@ -1,3 +1,5 @@
+"""LLM 初始化：读取 .env 配置，创建 OpenAI 兼容协议的对话模型。"""
+
 from dotenv import load_dotenv,find_dotenv
 import os
 from langchain.chat_models import init_chat_model

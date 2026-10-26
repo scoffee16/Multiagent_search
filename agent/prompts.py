@@ -1,4 +1,5 @@
-# 目标加载yml中的数据，供创建主和子智能体使用
+"""提示词加载模块：读取 prompt/prompts.yml，供主智能体与子智能体创建时使用。"""
+
 import yaml # yaml配置文件读取
 from pathlib import Path
 

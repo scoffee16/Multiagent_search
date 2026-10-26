@@ -1,3 +1,5 @@
+"""数据库查询子智能体：自然语言转 SQL，查询 MySQL 中的订单与经营数据。"""
+
 from agent.prompts import sub_agents_content
 from tools.db_tools import list_sql_tables,get_table_data,execute_sql_query
 

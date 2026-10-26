@@ -1,3 +1,5 @@
+# 主智能体与三个子智能体的提示词配置（由 agent/prompts.py 加载）
+
 # Main Agent Configuration
 main_agent:
   system_prompt: |

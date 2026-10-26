@@ -1,5 +1,5 @@
-# 目标： 创建网络搜索子智能体
-# 方式1： dict -> deepagents  方式： compiledSubAgent -> langchain langgraph
+"""网络搜索子智能体：通过 Tavily 检索行业动态、竞品动作与消费者趋势。"""
+
 from agent.prompts import sub_agents_content
 from tools.tavily_tool import internet_search
 

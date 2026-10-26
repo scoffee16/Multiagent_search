@@ -1,3 +1,5 @@
+"""协程级上下文变量：在异步请求链路中隔离会话目录与 thread_id，避免多会话串台。"""
+
 from contextvars import ContextVar
 from typing import Optional
 
