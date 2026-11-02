@@ -1,0 +1,476 @@
+{
+  "generated_at": "2026-11-02 16:39:00",
+  "config": {
+    "dataset": "evals\\dataset.json",
+    "train_data": "evals\\intent_dataset.json",
+    "train_samples": 72,
+    "use_llm": false,
+    "ngram_range": [
+      1,
+      3
+    ],
+    "alpha": 1.0,
+    "l2_min_confidence": 0.55,
+    "l2_min_margin": 0.15,
+    "target_accuracy": 0.85
+  },
+  "summary": {
+    "total": 20,
+    "accuracy": 0.95,
+    "macro_f1": 0.9495,
+    "target_accuracy": 0.85,
+    "target_met": true,
+    "layer_counts": {
+      "L1-rule": 17,
+      "L2-classifier": 3,
+      "L3-llm": 0,
+      "L4-clarify": 0
+    },
+    "l1_hits": 17,
+    "l2_hits": 3,
+    "l3_hits": 0,
+    "fallback": 0,
+    "routing_coverage": 1.0,
+    "latency_ms": {
+      "avg": 0.03,
+      "max": 0.124
+    },
+    "classifier_train_ms": 1.653
+  },
+  "per_class": {
+    "database": {
+      "precision": 0.8333,
+      "recall": 1.0,
+      "f1": 0.9091,
+      "support": 5
+    },
+    "document": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    },
+    "web": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 5
+    },
+    "mixed": {
+      "precision": 1.0,
+      "recall": 0.8,
+      "f1": 0.8889,
+      "support": 5
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "database",
+      "document",
+      "web",
+      "mixed"
+    ],
+    "matrix": [
+      [
+        5,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        5,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        4
+      ]
+    ]
+  },
+  "cases": [
+    {
+      "id": "db-01",
+      "question": "orders 表里一共有多少条订单记录？只给数字。",
+      "intent": "database",
+      "predicted": "database",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "数量统计",
+        "订单明细"
+      ],
+      "suggested_subagents": [
+        "数据分析助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.038
+    },
+    {
+      "id": "db-02",
+      "question": "orders 表里哪个品类的订单数最多？",
+      "intent": "database",
+      "predicted": "database",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "数量统计",
+        "聚合计算"
+      ],
+      "suggested_subagents": [
+        "数据分析助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.02
+    },
+    {
+      "id": "db-03",
+      "question": "orders 表所有订单的 total_amount 总和是多少？",
+      "intent": "database",
+      "predicted": "database",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "聚合计算"
+      ],
+      "suggested_subagents": [
+        "数据分析助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.018
+    },
+    {
+      "id": "db-04",
+      "question": "orders 表里金额最高的订单号是哪一个？",
+      "intent": "database",
+      "predicted": "database",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "聚合计算",
+        "订单明细"
+      ],
+      "suggested_subagents": [
+        "数据分析助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.016
+    },
+    {
+      "id": "db-05",
+      "question": "orders 表的 status 字段有哪几种取值？",
+      "intent": "database",
+      "predicted": "database",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "字段取值"
+      ],
+      "suggested_subagents": [
+        "数据分析助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.015
+    },
+    {
+      "id": "rag-01",
+      "question": "按内部订单分析 SOP，样本量少于多少笔时不允许做趋势推断？",
+      "intent": "document",
+      "predicted": "document",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "SOP",
+        "样本置信度"
+      ],
+      "suggested_subagents": [
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.016
+    },
+    {
+      "id": "rag-02",
+      "question": "按内部 SOP，清库存的一级预警判定标准是什么？",
+      "intent": "document",
+      "predicted": "document",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "SOP",
+        "口径定义"
+      ],
+      "suggested_subagents": [
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.014
+    },
+    {
+      "id": "rag-03",
+      "question": "内部 SOP 里 AOV（客单价）的计算口径是什么？",
+      "intent": "document",
+      "predicted": "document",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "SOP",
+        "口径定义"
+      ],
+      "suggested_subagents": [
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.014
+    },
+    {
+      "id": "rag-04",
+      "question": "根据数据字典，orders 表里哪些订单状态不计入 GMV？",
+      "intent": "document",
+      "predicted": "document",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "数据字典"
+      ],
+      "suggested_subagents": [
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.016
+    },
+    {
+      "id": "rag-05",
+      "question": "orders 表的 status 字段默认值是什么？",
+      "intent": "document",
+      "predicted": "document",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "数据字典"
+      ],
+      "suggested_subagents": [
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.014
+    },
+    {
+      "id": "web-01",
+      "question": "2024 年诺贝尔物理学奖授予了哪两位科学家？",
+      "intent": "web",
+      "predicted": "web",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "外部事实"
+      ],
+      "suggested_subagents": [
+        "市场情报助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.015
+    },
+    {
+      "id": "web-02",
+      "question": "Docker Desktop 在 Windows 上默认使用什么虚拟化后端？",
+      "intent": "web",
+      "predicted": "web",
+      "confidence": 1.0,
+      "layer": "L2-classifier",
+      "needs_clarification": false,
+      "matched": [],
+      "suggested_subagents": [
+        "市场情报助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.124
+    },
+    {
+      "id": "web-03",
+      "question": "Python 3.12 稳定版是哪一年发布的？",
+      "intent": "web",
+      "predicted": "web",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "外部事实"
+      ],
+      "suggested_subagents": [
+        "市场情报助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.032
+    },
+    {
+      "id": "web-04",
+      "question": "DeepSeek 的 API 兼容哪家公司的接口协议？",
+      "intent": "web",
+      "predicted": "web",
+      "confidence": 0.9967,
+      "layer": "L2-classifier",
+      "needs_clarification": false,
+      "matched": [],
+      "suggested_subagents": [
+        "市场情报助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.091
+    },
+    {
+      "id": "web-05",
+      "question": "RAGFlow 这个项目是做什么的？一句话说明。",
+      "intent": "web",
+      "predicted": "web",
+      "confidence": 1.0,
+      "layer": "L2-classifier",
+      "needs_clarification": false,
+      "matched": [],
+      "suggested_subagents": [
+        "市场情报助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.08
+    },
+    {
+      "id": "mix-01",
+      "question": "结合知识库和数据库回答：本项目默认端口是多少，orders 表一共多少条记录？",
+      "intent": "mixed",
+      "predicted": "mixed",
+      "confidence": 0.94,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "数量统计",
+        "内部文档",
+        "结合综合",
+        "项目级"
+      ],
+      "suggested_subagents": [
+        "市场情报助手",
+        "数据分析助手",
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.02
+    },
+    {
+      "id": "mix-02",
+      "question": "orders 表里各品类的订单数和总金额分别是多少？请用表格给出。",
+      "intent": "mixed",
+      "predicted": "mixed",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "数量统计",
+        "报表输出"
+      ],
+      "suggested_subagents": [
+        "市场情报助手",
+        "数据分析助手",
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.016
+    },
+    {
+      "id": "mix-03",
+      "question": "根据知识库，启动本项目 API 服务的命令是什么？",
+      "intent": "mixed",
+      "predicted": "mixed",
+      "confidence": 0.86,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "内部文档",
+        "项目级"
+      ],
+      "suggested_subagents": [
+        "市场情报助手",
+        "数据分析助手",
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.015
+    },
+    {
+      "id": "mix-04",
+      "question": "orders 表里最早和最晚的订单分别发生在哪一天？",
+      "intent": "mixed",
+      "predicted": "database",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "聚合计算"
+      ],
+      "suggested_subagents": [
+        "数据分析助手"
+      ],
+      "correct": false,
+      "latency_ms": 0.016
+    },
+    {
+      "id": "mix-05",
+      "question": "本项目的三个子智能体分别负责什么？请结合知识库说明。",
+      "intent": "mixed",
+      "predicted": "mixed",
+      "confidence": 0.9,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "内部文档",
+        "结合综合",
+        "项目级"
+      ],
+      "suggested_subagents": [
+        "市场情报助手",
+        "数据分析助手",
+        "内部知识助手"
+      ],
+      "correct": true,
+      "latency_ms": 0.015
+    }
+  ],
+  "misclassified": [
+    {
+      "id": "mix-04",
+      "question": "orders 表里最早和最晚的订单分别发生在哪一天？",
+      "intent": "mixed",
+      "predicted": "database",
+      "confidence": 0.82,
+      "layer": "L1-rule",
+      "needs_clarification": false,
+      "matched": [
+        "聚合计算"
+      ],
+      "suggested_subagents": [
+        "数据分析助手"
+      ],
+      "correct": false,
+      "latency_ms": 0.016
+    }
+  ]
+}

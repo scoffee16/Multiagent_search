@@ -20,9 +20,12 @@ MultiAgent-Search 是我个人开发并维护的一个**多智能体协作分析
 - **网络搜索子智能体**：通过 Tavily 抓取外部信息（行业动态、竞品动作、消费者趋势）；
 - **数据库查询子智能体**：把自然语言转成 SQL，查询 MySQL 中的订单与经营数据；
 - **知识库子智能体**：在 RAGFlow 中检索内部 SOP、数据字典等文档；
+- **对话增强**：分层意图路由（规则 → 朴素贝叶斯 → LLM 兜底 → 反问澄清）、跨会话长期记忆、上下文预算管理、流式 token 输出；
 - **Web 服务**：FastAPI 提供 HTTP 接口与 WebSocket 实时进度，浏览器页面可直接对话，报告可导出 PDF。
 
-设计目标是「轻量、可读、可扩展」：核心链路约 1600 行 Python（含测试与评测脚本约 2500 行），单进程即可跑起来；MySQL、RAGFlow 都是可选项，缺任何一个系统会自动降级，而不是整体不可用。
+设计目标是「轻量、可读、可扩展」：核心链路约 4500 行 Python（含测试与评测脚本约 7400 行），单进程即可跑起来；MySQL、RAGFlow 都是可选项，缺任何一个系统会自动降级，而不是整体不可用。
+
+> 在 P0/P1 迭代里补齐了四块「能被追问」的能力：**性能埋点**（阶段耗时 P50/P95）、**分层意图路由**（含混淆矩阵与离线评测）、**长期记忆子系统**（写入 / 召回 / 注入 / 维护 / 跨会话评测）、**流式输出与上下文预算**。每项设计取舍都记录在 [`docs/design-decisions.md`](docs/design-decisions.md)，需求到实现的映射见 [`docs/requirements-p0-p1.md`](docs/requirements-p0-p1.md)。
 
 > 项目定位：个人工具型项目，不是生产级 SaaS。优先保证链路完整、行为可观测、结果可复现，方便按需裁剪与继续扩展。
 
@@ -32,8 +35,13 @@ MultiAgent-Search 是我个人开发并维护的一个**多智能体协作分析
 
 | 能力 | 实现位置 | 说明 |
 | --- | --- | --- |
-| 多智能体编排 | `agent/main_agent.py` | 主智能体按需求调度 3 个子智能体，流式执行并汇总结果 |
-| 实时进度推送 | `api/monitor.py` | WebSocket 事件总线，前端逐条看到「思考 / 工具调用 / 结果」 |
+| 多智能体编排 | `agent/main_agent.py` | 主智能体按需求调度 3 个子智能体，双流式执行并汇总结果 |
+| 分层意图路由 | `agent/intent_router.py` | L1 关键词规则 → L2 字符 n-gram 朴素贝叶斯 → L3 LLM few-shot 兜底 → L4 反问澄清；离线准确率 95%、macro F1 0.9495 |
+| 长期记忆 | `agent/memory.py` | 跨会话记忆：任务后 LLM 抽取候选 → 去重入库 → 余弦 × 置信度 × 时间衰减召回 top-5（计算类任务强制注入最近约束）→ 注入 `### 已知背景`；跨会话评测 5/5 |
+| 性能埋点 | `agent/timing.py` / `agent/tool_observer.py` | 检索 / 首字 / LLM / 工具 / 子智能体各阶段耗时写入 SQLite，提供 P50/P95 聚合与 `/api/metrics` |
+| 上下文预算 | `agent/context_manager.py` | 记忆 / 槽位 / 历史 token 预算与工具输出裁剪，控制长上下文 |
+| 流式输出 | `api/monitor.py` + 前端 | WebSocket `token` 事件逐字增量渲染；首字延迟单独埋点 |
+| 实时进度推送 | `api/monitor.py` | WebSocket 事件总线，前端逐条看到「意图 / 工具调用 / 工具输出 / token / 耗时 / 记忆」 |
 | 协程级会话隔离 | `api/context.py` | ContextVar 隔离并发请求的上下文，多会话互不串台 |
 | 异步后台任务 | `api/server.py` | `POST /api/task` 立即返回 thread_id，任务用 `asyncio.create_task` 在后台执行 |
 | NL2SQL + 只读守卫 | `tools/db_tools.py` | 自然语言查库；写操作、多语句、注释绕过都会被拦截 |
@@ -164,7 +172,12 @@ WebSocket 实时进度：`ws://127.0.0.1:8010/ws/{返回的 thread_id}`
 | POST | `/api/upload` | 上传文件到指定会话，供 Agent 读取 |
 | GET | `/api/files` | 列出会话上传/生成的文件 |
 | GET | `/api/download` | 下载生成的文件（Markdown / PDF） |
-| WS | `/ws/{thread_id}` | 实时事件推送（思考、工具调用、结果、完成） |
+| WS | `/ws/{thread_id}` | 实时事件推送（意图、工具调用、工具输出、token、耗时、记忆、结果、完成） |
+| GET | `/api/task/{thread_id}/timings` | 单次任务的阶段耗时（检索 / 首字 / LLM / 工具 / 子智能体） |
+| GET | `/api/metrics` | 全部任务耗时聚合（P50/P95、意图分布、路由层分布） |
+| GET | `/api/memory` | 长期记忆列表（支持 `thread_id` / `limit` 过滤） |
+| GET | `/api/memory/stats` | 记忆数量、类型与线程分布 |
+| DELETE | `/api/memory/{memory_id}` | 删除一条长期记忆 |
 
 ### Docker 部署（可选）
 
@@ -187,7 +200,12 @@ Multiagent_search/
 ├── agent/                          # 智能体层（核心）
 │   ├── llm.py                      # 模型初始化
 │   ├── prompts.py                  # YAML 提示词加载器
-│   ├── main_agent.py               # 主智能体 + 异步执行引擎
+│   ├── main_agent.py               # 主智能体 + 双流式执行引擎（token / updates）
+│   ├── intent_router.py            # 分层意图路由（L1 规则 → L2 贝叶斯 → L3 LLM → L4 澄清）
+│   ├── memory.py                   # 长期记忆：写入 / 去重 / 召回 / 注入 / 维护
+│   ├── timing.py                   # 阶段耗时计时器 + SQLite 指标聚合
+│   ├── context_manager.py          # 上下文预算、槽位抽取、历史摘要与工具输出裁剪
+│   ├── tool_observer.py            # 工具埋点包装（耗时 + 输出预览）
 │   └── subagents/
 │       ├── network_search_agent.py # 网络搜索子智能体
 │       ├── database_query_agent.py # 数据库查询子智能体
@@ -218,17 +236,28 @@ Multiagent_search/
 │   ├── kb/                         # 知识库示例文档（电商运营场景）
 │   │   ├── 订单分析口径SOP.md       # GMV/订单数/客单价等指标口径
 │   │   └── orders数据字典.md       # orders 表结构与枚举定义
+│   ├── design-decisions.md         # 设计取舍：MySQL vs RAGFlow、FC vs MCP、意图分层、流式、字段与记忆
+│   ├── memory-design.md            # 长期记忆子系统设计（表结构 / 写入 / 召回 / 注入 / 维护 / 评测）
+│   ├── context-management.md       # 上下文管理：裁剪 / 摘要 / 检索注入 / 槽位 / 预算
+│   ├── requirements-p0-p1.md       # P0/P1 需求 → 实现 → 验证 映射清单
 │   └── images/architecture.png     # 架构图
 │
 ├── evals/                          # 端到端评测
-│   ├── dataset.json                # 20 题评测集（四类场景）
-│   ├── run_eval.py                 # 评测脚本（HTTP + WebSocket 真实链路）
-│   └── report*.md / report*.json   # 评测报告（首轮 + 最新一轮）
+│   ├── dataset.json                # 20 题评测集（四类场景，含 intent / expected_subagents 标注）
+│   ├── run_eval.py                 # 评测脚本（HTTP + WebSocket 真实链路，含路由与引用统计）
+│   ├── intent_dataset.json         # 意图路由标注集（72 条 / 4 类）
+│   ├── intent_eval.py              # 离线意图评测（混淆矩阵 + 每类 P/R/F1 + 分层命中）
+│   ├── memory_eval.py              # 跨会话记忆评测（5 组多轮用例）
+│   └── report*.md / report*.json   # 评测报告（首轮 / 最新一轮 / 意图 / 记忆）
 │
 ├── tests/                          # 单元测试
 │   ├── test_monitor_events.py
 │   ├── test_path_utils.py
-│   └── test_sql_guard.py
+│   ├── test_sql_guard.py
+│   ├── test_intent_router.py
+│   ├── test_memory.py
+│   ├── test_timing.py
+│   └── test_context_manager.py
 │
 ├── scripts/                        # 运维 / 工具脚本
 │   ├── ragflow_provision_demo.py   # RAGFlow 知识库初始化
@@ -278,10 +307,19 @@ Multiagent_search/
 
 | 指标 | 结果 |
 | --- | --- |
-| 通过率 | **20/20（100%）**，四类各 5/5 |
-| 延迟 | P50 **8.3s**，P95 28.2s，最大 28.4s |
-| 工具调用 | 平均 **3.2 次/题**，最多 7 次 |
-| 输出规模 | 平均 488 字（≈325 tokens，按中文 1.5 字/token 估算） |
+| 通过率 | **20/20（100%）**，查库/查文档/联网/综合各 5/5 |
+| 端到端延迟 | P50 **14.2s**，P95 32.6s，最大 62.8s |
+| 首字延迟 | P50 **8.6s**，P95 21.5s（20 题均走流式） |
+| 阶段耗时 | retrieve P50 0ms / P95 1ms；LLM P50 2.6s / P95 4.5s；tool P50 3.3s / P95 14.9s |
+| 路由准确率 | 完全匹配 **15/20（75%）**，平均召回率 85% |
+| 引用覆盖率 | **83%（114/130 个数值句可回溯来源）** |
+| 工具调用 | 平均 **4.5 次/题**，最多 14 次 |
+| 输出规模 | 平均 747 字（≈498 tokens，按中文 1.5 字/token 估算） |
+
+> 与 2026-10-26 基线（非流式，P50 8.3s / P95 28.2s，无首字/阶段/路由/引用指标）对比：
+> 本轮端到端更慢，但新增的前置检索（意图路由 + 记忆召回 + 槽位组装）只占 0–1ms，
+> 慢在模型服务 TTFT 波动与流式首字口径 —— 基线没有首字指标，无法逐项对齐。
+> 复现命令见下方；报告里同时给出每题的 token 数、工具调用数、路由与引用明细。
 
 复现方式：
 
@@ -295,16 +333,53 @@ python evals/run_eval.py --category 查库 --limit 3   # 只跑一部分
 
 > 已知局限：联网类 5 题模型直接凭参数化知识作答、没有触发 Tavily 工具（`tool_calls=0`），
 > 因此该类别证明的是「答得对」，不代表「联网链路被验证过」。
+>
+> 报告中的**路由准确率**（`expected_subagents` 与实际 `assistant_call` 是否一致）与**引用覆盖率**
+> （数值结论是否带来源标记或可回溯到工具输出）来自 P1 §3.9 的评测升级，同一份 `report.md` 里可见。
+
+### 意图路由离线评测（无需服务）
+
+`evals/intent_dataset.json` 是 72 条标注 query（4 类各 18 条，与 20 题评测集零重叠），
+`evals/intent_eval.py` 跑「规则 → 字符 n-gram 朴素贝叶斯 → LLM 兜底 → 澄清」的分层路由：
+
+```bash
+python evals/intent_eval.py        # 写 evals/intent_report.md / .json
+```
+
+| 指标 | 结果 |
+| --- | --- |
+| 准确率 | **95.0%（19/20）** |
+| macro F1 | **0.9495** |
+| 分层命中 | L1 规则 17 题 / L2 分类器 3 题 / L3 LLM 0 / L4 澄清 0 |
+| 离线决策耗时 | 平均 **0.03ms** / 最大 0.12ms |
+
+报告含混淆矩阵与每类 P/R/F1；唯一误判 `mix-04` 是约定标 `mixed` 的边界样本（L1 判为 `database`），
+已在报告里注明。
+
+### 长期记忆跨会话评测（需服务）
+
+`evals/memory_eval.py` 用 5 组跨会话用例验证记忆链路：会话 A 陈述偏好/约束 → 轮询 `/api/memory`
+确认写入 → 会话 B 换全新 `thread_id` 提问，检查回答是否用上记忆。
+
+| 指标 | 结果 |
+| --- | --- |
+| 通过率 | **5/5（100%）**（修复前 4/5，详见 `docs/memory-design.md` §9） |
+| 记忆写入 | **5/5** 组可在会话 A 后通过 `/api/memory` 查到 |
+| 耗时 | 会话 A 平均 9.6s，会话 B 平均 39.7s |
 
 ### 单元测试
 
 ```bash
-pytest -q      # 53 passed
+pytest -q      # 173 passed
 ```
 
 | 测试文件 | 覆盖内容 |
 | --- | --- |
-| `tests/test_monitor_events.py` | 事件总线 6 类事件的 payload、时间戳、无 runtime/无 WS 时降级 |
+| `tests/test_monitor_events.py` | 事件总线 9 类事件的 payload、时间戳、token 只走 WS、超长工具输出裁剪 |
+| `tests/test_timing.py` | 计时器 / 百分位 / 指标库 upsert / 聚合 / 重置 |
+| `tests/test_intent_router.py` | 规则层、朴素贝叶斯、置信度降级、L4 澄清、混淆矩阵与指标 |
+| `tests/test_memory.py` | 哈希 embedding、去重、检索衰减、最近记忆类型过滤、候选校验、维护 |
+| `tests/test_context_manager.py` | token 估算、头尾裁剪、槽位抽取、分节预算、摘要降级 |
 | `tests/test_path_utils.py` | 虚拟前缀清洗、session 嵌套防护、updated/ 重定向、`..` 越界拦截 |
 | `tests/test_sql_guard.py` | SQL 只读守卫：写操作、多语句、关键字出现在字面量里的误判 |
 
@@ -321,6 +396,11 @@ lint 分两道闸：全仓只拦 E9/F63/F7/F82 这类真错误，新代码（`te
 - [x] 20 题端到端评测集与确定性判分脚本
 - [x] SQL 只读守卫、路径越界防护、单元测试与 CI 四关
 - [x] Dockerfile / docker-compose 本地一键部署
+- [x] 分层意图路由（L1–L4）与离线评测（准确率 95%、macro F1 0.9495）
+- [x] 长期记忆子系统（写入 / 召回 / 注入 / 维护）与跨会话评测
+- [x] 流式 token 输出与阶段耗时埋点（首字延迟、P50/P95、`/api/metrics`）
+- [x] 上下文预算管理（记忆 / 槽位 / 历史 / 工具输出分别限流）
+- [x] 设计决策文档与需求映射清单（`docs/design-decisions.md`、`docs/requirements-p0-p1.md`）
 - [ ] JWT 登录与多用户配额
 - [ ] 人工审批节点（LangGraph interrupt），敏感操作需确认
 - [ ] 报告归档与会话历史管理
@@ -334,7 +414,11 @@ lint 分两道闸：全仓只拦 E9/F63/F7/F82 这类真错误，新代码（`te
 - 联网类评测中模型可能凭参数化知识直接作答，`tool_calls=0`，该类别不能证明联网链路被验证过；
 - PDF 转换在 Windows 下依赖 Word COM，容器内需要 WeasyPrint 替代；
 - 当前没有鉴权与多租户配额，默认按单机单用户使用设计；
-- 评测集 20 题，用于回归验收，不等同于全面质量评估。
+- 评测集 20 题，用于回归验收，不等同于全面质量评估；
+- 首字延迟 `first_token_ms` 从任务开始计时，包含意图路由/记忆检索/工具调用阶段，不等于「模型首次吐字」；
+- 记忆的 `embed_text` 是字符 n-gram 哈希向量（本地、零依赖、零 API 费用），不是语义 embedding，
+  同义改写召回弱；接口已收敛到 `embed_text` 一处，可平滑替换为真实 embedding 模型；
+- 20 题评测串行执行，延迟数字受模型服务 TTFT 波动影响较大，横向对比时需看同批数据。
 
 ---
 

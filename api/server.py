@@ -25,7 +25,8 @@ sys.path.insert(0, str(project_root))
 
 # Import agent runner and monitor
 # 注意：agent.main_agent 导入时会初始化 main_agent，这可能需要几秒钟
-from agent.main_agent import run_deep_agent
+from agent.main_agent import get_memory_store, run_deep_agent
+from agent.timing import metrics_store
 from api.monitor import manager
 
 app = FastAPI(title="DeepAgents API")
@@ -89,6 +90,46 @@ async def run_task(request: TaskRequest):
 
     # 3. [立即响应]
     return {"status": "started", "thread_id": thread_id}
+
+
+@app.get("/api/task/{thread_id}/timings")
+async def get_task_timings(thread_id: str):
+    """查询单个任务的耗时明细（P0 §3.1 性能埋点）。
+
+    返回端到端耗时、首字延迟、检索/LLM/工具/子智能体分阶段耗时与工具调用次数。
+    """
+    run = metrics_store.get(thread_id)
+    if run is None:
+        return {"error": "任务不存在或尚未完成", "thread_id": thread_id}
+    return {"timings": run}
+
+
+@app.get("/api/metrics")
+async def get_metrics(limit: int = 50):
+    """性能指标聚合：P50/P95、首字延迟、各阶段耗时、意图/路由分布。"""
+    safe_limit = max(1, min(int(limit), 500))
+    return {"aggregate": metrics_store.aggregate(), "runs": metrics_store.list_runs(limit=safe_limit)}
+
+
+@app.get("/api/memory")
+async def list_memories(thread_id: str = None, limit: int = 100):
+    """长期记忆列表（可按 thread_id 过滤），供前端记忆面板展示。"""
+    store = get_memory_store()
+    safe_limit = max(1, min(int(limit), 500))
+    memories = store.list(thread_id=thread_id, limit=safe_limit)
+    return {"memories": memories, "count": len(memories)}
+
+
+@app.get("/api/memory/stats")
+async def get_memory_stats():
+    """长期记忆统计：总数、类型分布、会话分布、最近写入时间。"""
+    return get_memory_store().stats()
+
+
+@app.delete("/api/memory/{memory_id}")
+async def delete_memory(memory_id: int):
+    """删除一条长期记忆（前端记忆面板的删除按钮）。"""
+    return {"deleted": get_memory_store().delete(memory_id), "id": memory_id}
 
 
 @app.post("/api/upload")

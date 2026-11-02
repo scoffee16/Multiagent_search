@@ -15,6 +15,7 @@
     --orange: #f59e0b; --orange-bg: rgba(245,158,11,.12);
     --red: #ef4444; --red-bg: rgba(239,68,68,.12);
     --purple: #a855f7; --purple-bg: rgba(168,85,247,.12);
+    --teal: #2dd4bf; --teal-bg: rgba(45,212,191,.12);
     --radius: 10px;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   }
@@ -143,6 +144,58 @@
     max-height: 200px; overflow-y: auto; color: var(--text-dim); white-space: pre-wrap;
   }
 
+  /* ── 意图徽标 / 耗时面板 / 工具输出 / 记忆事件 ── */
+  .log-dot.i { background: var(--accent); box-shadow: 0 0 5px var(--accent-glow); }
+  .log-tag.i { color: #c7d2fe; background: var(--accent-glow); }
+  .log-dot.m { background: var(--teal); box-shadow: 0 0 5px rgba(45,212,191,.5); }
+  .log-tag.m { color: var(--teal); background: var(--teal-bg); }
+  .intent-badge {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 3px;
+    padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    color: #c7d2fe; background: var(--accent-glow); border: 1px solid rgba(99,102,241,.4);
+  }
+  .intent-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 4px; }
+
+  .timing-panel {
+    margin-top: 5px; padding: 10px 12px; max-width: 620px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+  }
+  .timing-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .timing-chip {
+    font-size: 11.5px; color: var(--text-dim); padding: 2px 9px; border-radius: 999px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  }
+  .timing-chip b { color: var(--text); font-weight: 600; }
+  .timing-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 11.5px; }
+  .timing-label { width: 62px; flex-shrink: 0; color: var(--text-dim); }
+  .timing-track {
+    flex: 1; height: 6px; border-radius: 999px; background: rgba(255,255,255,.05); overflow: hidden;
+  }
+  .timing-fill { display: block; height: 100%; border-radius: 999px; }
+  .timing-ms {
+    width: 58px; text-align: right; color: var(--text-dim); flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tool-output {
+    margin-top: 5px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--bg); overflow: hidden;
+  }
+  .tool-output summary {
+    padding: 6px 10px; font-size: 11.5px; color: var(--text-dim); cursor: pointer;
+    user-select: none; list-style: none;
+  }
+  .tool-output summary::-webkit-details-marker { display: none; }
+  .tool-output summary:hover { color: var(--text); }
+  .tool-output pre {
+    margin: 0; padding: 8px 10px; max-height: 190px; overflow: auto;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 11.5px; line-height: 1.6; color: var(--text-dim);
+    white-space: pre-wrap; word-break: break-word; border-top: 1px solid var(--border);
+  }
+  .mem-detail { margin-top: 4px; font-size: 11.5px; color: var(--text-dim); }
+  .mem-detail li { margin: 3px 0 3px 16px; }
+
   /* ── 最终结果卡片（重点显示） ── */
   .result-card {
     margin: 10px 0 8px; border: 1px solid rgba(99,102,241,.45); border-radius: 12px;
@@ -207,6 +260,17 @@
   }
   .error-card .result-body { color: #fecaca; }
 
+  /* ── 流式回答（token 增量） ── */
+  .stream-card { border-style: dashed; }
+  .stream-card .result-head { background: rgba(99,102,241,.10); }
+  .stream-card .result-body { max-height: 46vh; }
+  .stream-cursor {
+    display: inline-block; width: 7px; height: 15px; margin-left: 2px;
+    border-radius: 1px; background: var(--accent); vertical-align: -2px;
+    animation: blink 1s steps(2, start) infinite;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
   /* ── file panel ── */
   .file-panel {
     width: 300px; flex-shrink: 0; display: flex; flex-direction: column;
@@ -230,6 +294,34 @@
   .file-name { font-size: 12px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-meta { font-size: 11px; color: var(--text-dim); }
   .file-item .btn { padding: 4px 10px; font-size: 11px; border-radius: 5px; }
+
+  /* ── 记忆面板（右侧栏下半区） ── */
+  .file-panel-header.sub-header { border-top: 1px solid var(--border); }
+  .memory-list {
+    max-height: 36vh; flex-shrink: 0; overflow-y: auto; padding: 8px 10px;
+  }
+  .memory-list .empty-state { height: auto; padding: 16px 0; }
+  .memory-item {
+    padding: 8px 9px; border-radius: 7px; background: rgba(255,255,255,.02);
+    border: 1px solid rgba(37,40,54,.7); margin-bottom: 6px; transition: opacity .15s;
+  }
+  .memory-item:hover { background: rgba(255,255,255,.04); }
+  .mem-top { display: flex; align-items: center; gap: 6px; }
+  .mem-type {
+    font-size: 10px; font-weight: 700; letter-spacing: .3px; padding: 1px 6px;
+    border-radius: 3px; color: var(--teal); background: var(--teal-bg);
+  }
+  .mem-meta { font-size: 10.5px; color: var(--text-dim); }
+  .mem-del {
+    margin-left: auto; padding: 1px 7px !important; font-size: 13px !important;
+    line-height: 1.2 !important; color: var(--text-dim);
+  }
+  .mem-del:hover { color: var(--red); border-color: rgba(239,68,68,.5); }
+  .mem-content {
+    font-size: 11.5px; line-height: 1.55; color: var(--text); margin-top: 4px;
+    word-break: break-word; display: -webkit-box; -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -264,6 +356,13 @@
       <button class="btn btn-ghost" onclick="refreshFiles()" style="padding:3px 9px;font-size:10px;">刷新</button>
     </div>
     <div class="file-list" id="fileList"></div>
+    <div class="file-panel-header sub-header">
+      <span>🧠 长期记忆</span>
+      <button class="btn btn-ghost" onclick="refreshMemory()" style="padding:3px 9px;font-size:10px;">刷新</button>
+    </div>
+    <div class="memory-list" id="memoryList">
+      <div class="empty-state"><div class="icon">🧠</div><div>暂无长期记忆</div></div>
+    </div>
   </div>
 </div>
 
@@ -280,8 +379,12 @@ const tagMap = {
   session_created: { dot:'s', tag:'s', text:'会话' },
   assistant_call:  { dot:'a', tag:'a', text:'调度' },
   tool_start:      { dot:'t', tag:'t', text:'工具' },
+  tool_result:     { dot:'t', tag:'t', text:'输出' },
   task_result:     { dot:'r', tag:'r', text:'完成' },
   error:           { dot:'e', tag:'e', text:'错误' },
+  intent:          { dot:'i', tag:'i', text:'意图' },
+  timing:          { dot:'i', tag:'i', text:'耗时' },
+  memory:          { dot:'m', tag:'m', text:'记忆' },
 };
 
 function createSession(threadId, query) {
@@ -293,6 +396,9 @@ function createSession(threadId, query) {
     dir: null,
     status: 'running', // running | done | error
     el: null,
+    streamText: '',    // token 事件累计的流式回答（不进 logs，避免整屏重渲染）
+    streaming: false,
+    _streamRaf: null,
   };
   sessions[threadId] = session;
 
@@ -306,14 +412,42 @@ function createSession(threadId, query) {
       const d = JSON.parse(e.data);
       if (d.type === 'pong') return;
       if (d.type !== 'monitor_event') return;
+      const data = d.data || {};
+
+      // token：最终回答的流式增量。单独维护，不塞进 logs，避免每个 token 都重渲染整屏。
+      if (d.event === 'token') {
+        if (session.status !== 'running') return;      // 已结束的任务忽略迟到 token
+        if (typeof data.text === 'string' && data.text) {
+          session.streamText += data.text;
+          scheduleStreamRender(session);
+        }
+        return;
+      }
 
       session.logs.push({ event: d.event, message: d.message, data: d.data, timestamp: d.timestamp });
-      if (d.event === 'session_created' && d.data?.path) {
-        session.dir = d.data.path;
+      if (d.event === 'session_created' && data.path) {
+        session.dir = data.path;
         scheduleFileRefresh();
       }
-      if (d.event === 'task_result') { session.status = 'done'; scheduleFileRefresh(); }
-      if (d.event === 'error') { session.status = 'error'; }
+      if (d.event === 'task_result') {
+        session.status = 'done';
+        // 流式内容交给 task_result 的最终完整文本（结果卡片），清掉临时流式状态
+        session.streamText = '';
+        session.streaming = false;
+        const streamEl = document.getElementById(`stream_${threadId}`);
+        if (streamEl) streamEl.remove();
+        scheduleFileRefresh();
+        scheduleMemoryRefresh(1500);  // 任务完成后刷新记忆面板
+      }
+      if (d.event === 'error') {
+        session.status = 'error';
+        session.streamText = '';
+        session.streaming = false;
+      }
+      // 本次任务写入了新记忆：稍等落库后刷新面板
+      if (d.event === 'memory' && Array.isArray(data.written) && data.written.length) {
+        scheduleMemoryRefresh(1200);
+      }
 
       renderTabs();
       if (activeSessionId === threadId) renderLog(session);
@@ -321,6 +455,8 @@ function createSession(threadId, query) {
   };
   ws.onclose = () => {
     if (session.status === 'running') session.status = 'done';
+    session.streaming = false;
+    if (session.streamText && activeSessionId === threadId) renderLog(session);
     updateWSStatus();
     renderTabs();
   };
@@ -473,7 +609,7 @@ function renderLog(session) {
   const area = $('#logArea');
   const atBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
 
-  if (!session || session.logs.length === 0) {
+  if (!session || (session.logs.length === 0 && !session.streamText)) {
     area.innerHTML = `<div class="empty-state"><div class="icon">📋</div><div>${session ? '等待 Agent 响应...' : '发送一个任务开始调试'}</div></div>`;
     return;
   }
@@ -511,14 +647,158 @@ function renderLog(session) {
         </div>${tail}`;
     }
 
-    // ③ 工具/调度等中间过程：保持紧凑
+    // ③ 意图徽标：意图：数据分析 · 置信度 0.86 · L2-classifier
+    if (l.event === 'intent' && l.data) {
+      const d = l.data;
+      const conf = Number(d.confidence);
+      const confTxt = Number.isFinite(conf) ? conf.toFixed(2) : '-';
+      const zh = escapeHtml(String(d.label_zh || d.label || '未知'));
+      const layer = d.layer ? ' · ' + escapeHtml(String(d.layer)) : '';
+      const subs = (Array.isArray(d.suggested_subagents) && d.suggested_subagents.length)
+        ? `<div class="intent-sub">建议子智能体：${d.suggested_subagents.map(x => escapeHtml(String(x))).join(' · ')}</div>`
+        : '';
+      return `<div class="log-entry">${head}<div class="intent-badge">🎯 意图：${zh} · 置信度 ${confTxt}${layer}</div>${subs}${tail}`;
+    }
+
+    // ④ 耗时面板：首字延迟 / 总耗时 / 各阶段耗时
+    if (l.event === 'timing' && l.data) {
+      return `<div class="log-entry">${head}${timingPanelHTML(l.data)}${tail}`;
+    }
+
+    // ⑤ 工具输出摘要（默认折叠，点击展开）
+    if (l.event === 'tool_result' && l.data) {
+      return `<div class="log-entry">${head}${toolOutputHTML(l.data)}${tail}`;
+    }
+
+    // ⑥ 记忆事件（召回 / 写入，可选展示）
+    if (l.event === 'memory' && l.data) {
+      return `<div class="log-entry">${head}${memoryEventHTML(l.data)}${tail}`;
+    }
+
+    // ⑦ 工具/调度等中间过程：保持紧凑
     const resultBlock = l.data?.result
       ? `<div class="log-result-block">${escapeHtml(String(l.data.result).substring(0, 800))}${String(l.data.result).length > 800 ? '…' : ''}</div>`
       : '';
     return `<div class="log-entry">${head}${resultBlock}${tail}`;
   }).join('');
 
+  // 流式回答进行中：追加在日志最下方（切换会话 / 中间事件触发重渲染时保留已收增量）
+  if (session.streamText) area.insertAdjacentHTML('beforeend', streamCardHTML(session));
+
   if (atBottom) area.scrollTop = area.scrollHeight;
+}
+
+// ── 流式回答（token 增量渲染） ──
+function streamCardHTML(session) {
+  const sid = session.id;
+  return `<div class="log-entry" id="stream_${sid}">
+    <div class="log-dot a"></div>
+    <div class="log-body">
+      <span class="log-tag a">流式</span>
+      <span class="log-msg">主智能体正在生成最终回答…</span>
+      <div class="result-card stream-card">
+        <div class="result-head">
+          <span class="badge">✍️ 流式回答</span>
+          <span class="meta" id="streamMeta_${sid}">${(session.streamText || '').length} 字符</span>
+        </div>
+        <div class="result-body" id="streamBody_${sid}">${mdToHtml(session.streamText || '')}${session.streaming ? '<span class="stream-cursor"></span>' : ''}</div>
+      </div>
+      <div class="log-time">${session.streaming ? '生成中…' : '已停止'}</div>
+    </div>
+  </div>`;
+}
+
+function scheduleStreamRender(session) {
+  session.streaming = true;
+  if (activeSessionId !== session.id) return;      // 非当前会话只累计文本，切换回来时整屏渲染
+  if (session._streamRaf) return;
+  session._streamRaf = requestAnimationFrame(() => {
+    session._streamRaf = null;
+    updateStream(session);
+  });
+}
+
+function updateStream(session) {
+  if (activeSessionId !== session.id) return;
+  const area = $('#logArea');
+  let body = document.getElementById('streamBody_' + session.id);
+  if (!body) {
+    // 首个 token：把空态提示换成流式卡片
+    const empty = area.querySelector('.empty-state');
+    if (empty) empty.remove();
+    area.insertAdjacentHTML('beforeend', streamCardHTML(session));
+    body = document.getElementById('streamBody_' + session.id);
+    if (!body) return;
+  }
+  body.innerHTML = mdToHtml(session.streamText || '') + (session.streaming ? '<span class="stream-cursor"></span>' : '');
+  const meta = document.getElementById('streamMeta_' + session.id);
+  if (meta) meta.textContent = `${(session.streamText || '').length} 字符`;
+  area.scrollTop = area.scrollHeight;   // 流式输出自动滚动到底部
+}
+
+// ── 耗时面板 ──
+function fmtMs(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n < 0) return '-';
+  return n >= 1000 ? (n / 1000).toFixed(2) + 's' : Math.round(n) + 'ms';
+}
+
+function timingPanelHTML(data) {
+  const t = data.timings || {};
+  const num = v => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const total = num(t.total_ms);
+  const first = num(t.first_token_ms);
+  const calls = num(t.tool_calls);
+  const phases = [
+    ['检索', num(t.retrieve_ms), 'var(--blue)'],
+    ['LLM', num(t.llm_ms), 'var(--accent)'],
+    ['工具', num(t.tool_ms), 'var(--orange)'],
+    ['子智能体', num(t.subagent_ms), 'var(--purple)'],
+  ].filter(p => p[1] > 0);
+  const base = total > 0 ? total : (phases.reduce((s, p) => s + p[1], 0) || 1);
+  const rows = phases.map(([label, ms, color]) => {
+    const pct = Math.max(2, Math.min(100, ms / base * 100)).toFixed(1);
+    return `<div class="timing-row">
+      <span class="timing-label">${label}</span>
+      <span class="timing-track"><span class="timing-fill" style="width:${pct}%;background:${color};"></span></span>
+      <span class="timing-ms">${fmtMs(ms)}</span>
+    </div>`;
+  }).join('');
+  return `<div class="timing-panel">
+    <div class="timing-chips">
+      <span class="timing-chip">首字 <b>${fmtMs(first)}</b></span>
+      <span class="timing-chip">总耗时 <b>${fmtMs(total)}</b></span>
+      <span class="timing-chip">工具调用 <b>${Math.round(calls)}</b> 次</span>
+    </div>${rows}</div>`;
+}
+
+// ── 工具输出摘要（可折叠） ──
+function toolOutputHTML(data) {
+  const out = String(data.output == null ? '' : data.output);
+  const chars = Number.isFinite(Number(data.chars)) ? Number(data.chars) : out.length;
+  const shown = out.length > 4000 ? out.slice(0, 4000) + '\n…' : out;
+  const openAttr = out.length <= 300 ? ' open' : '';
+  return `<details class="tool-output"${openAttr}>
+    <summary>📤 输出摘要 · ${chars} 字符${data.truncated ? ' · 已截断' : ''} · 点击展开/收起</summary>
+    <pre>${escapeHtml(shown)}</pre>
+  </details>`;
+}
+
+// ── 记忆事件（召回 / 写入） ──
+function memoryEventHTML(data) {
+  const retrieved = Array.isArray(data.retrieved) ? data.retrieved : [];
+  const written = Array.isArray(data.written) ? data.written : [];
+  const parts = [];
+  if (retrieved.length) {
+    const items = retrieved.map(m => {
+      const score = Number.isFinite(Number(m.score)) ? Number(m.score).toFixed(2) : '-';
+      const content = truncateText(m.content, 160);
+      return `<li>[记忆 #${escapeHtml(String(m.id ?? '?'))}] ${escapeHtml(content)} <span style="color:var(--text-dim)">(${escapeHtml(String(m.type || '记忆'))} · ${score})</span></li>`;
+    }).join('');
+    parts.push(`<div class="mem-detail">召回 ${retrieved.length} 条记忆：<ul>${items}</ul></div>`);
+  }
+  if (written.length) parts.push(`<div class="mem-detail">写入 ${written.length} 条新记忆</div>`);
+  return parts.join('') || '<div class="mem-detail">本次无记忆变更</div>';
 }
 
 // ── 结果卡片交互 ──
@@ -638,7 +918,85 @@ async function refreshFiles() {
   } catch (_) {}
 }
 
+// ── 长期记忆面板 ──
+let memoryRefreshTimer = null;
+const MEMORY_TYPE_LABELS = {
+  fact: '事实', preference: '偏好', constraint: '约束', glossary: '术语',
+  decision: '决策', task: '任务', context: '上下文', note: '笔记', other: '其他',
+};
+
+function scheduleMemoryRefresh(delayMs = 1200) {
+  if (memoryRefreshTimer) clearTimeout(memoryRefreshTimer);
+  memoryRefreshTimer = setTimeout(refreshMemory, delayMs);
+}
+
+function memoryTypeLabel(t) { return MEMORY_TYPE_LABELS[t] || (t ? String(t) : '记忆'); }
+
+async function refreshMemory() {
+  const list = $('#memoryList');
+  if (!list) return;
+  try {
+    const res = await fetch('/api/memory?limit=20');
+    const d = await res.json();
+    if (!res.ok || d.error) throw new Error();
+    const mems = Array.isArray(d.memories) ? d.memories : [];
+    if (!mems.length) {
+      list.innerHTML = `<div class="empty-state"><div class="icon">🧠</div><div>暂无长期记忆</div></div>`;
+      return;
+    }
+    list.innerHTML = mems.map(memoryItemHTML).join('');
+  } catch (_) {
+    // 静默降级：接口未就绪/不可用时只提示，不弹错误、不影响主流程
+    list.innerHTML = `<div class="empty-state"><div class="icon">🧠</div><div>记忆服务不可用</div></div>`;
+  }
+}
+
+function memoryItemHTML(m) {
+  const id = m && m.id != null ? String(m.id) : '';
+  const type = m && m.type != null ? String(m.type) : '';
+  const content = m && m.content != null ? String(m.content) : '';
+  const conf = Number(m && m.confidence);
+  const hits = Number(m && m.hit_count);
+  const meta = [];
+  if (Number.isFinite(conf)) meta.push('置信 ' + conf.toFixed(2));
+  if (Number.isFinite(hits) && hits > 0) meta.push('命中 ' + hits);
+  const metaTxt = meta.length ? `<span class="mem-meta">${escapeHtml(meta.join(' · '))}</span>` : '';
+  const del = id
+    ? `<button class="btn btn-ghost mem-del" title="删除这条记忆" onclick="deleteMemory('${escapeAttr(id)}')">×</button>`
+    : '';
+  return `<div class="memory-item" id="mem_${escapeAttr(id)}">
+    <div class="mem-top"><span class="mem-type">${escapeHtml(memoryTypeLabel(type))}</span>${metaTxt}${del}</div>
+    <div class="mem-content" title="${escapeAttr(content)}">${escapeHtml(content)}</div>
+  </div>`;
+}
+
+async function deleteMemory(id) {
+  const item = id ? document.getElementById('mem_' + String(id)) : null;
+  try {
+    const res = await fetch('/api/memory/' + encodeURIComponent(id), { method: 'DELETE' });
+    const d = await res.json();
+    if (!res.ok || d.error || d.deleted === false) throw new Error();
+    if (item) item.remove();
+    const list = $('#memoryList');
+    if (list && !list.querySelector('.memory-item')) {
+      list.innerHTML = `<div class="empty-state"><div class="icon">🧠</div><div>暂无长期记忆</div></div>`;
+    }
+  } catch (_) {
+    // 删除失败不弹错误：短暂置灰作为反馈
+    if (item) {
+      item.style.opacity = '.4';
+      setTimeout(() => { item.style.opacity = ''; }, 800);
+    }
+  }
+}
+
 // ── 工具函数 ──
+function truncateText(s, n) {
+  const str = s == null ? '' : String(s);
+  const limit = Number(n) || 0;
+  if (limit <= 0 || str.length <= limit) return str;
+  return str.slice(0, limit) + '…';
+}
 function escapeHtml(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escapeAttr(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(iso) { try { return new Date(iso).toLocaleTimeString('zh-CN',{hour12:false}); } catch(_) { return ''; } }
@@ -659,6 +1017,7 @@ $('#queryInput').addEventListener('keydown', e => {
 // ── 初始 ──
 updateWSStatus();
 refreshFiles();
+refreshMemory();
 </script>
 </body>
 </html>
