@@ -73,12 +73,16 @@ jobs:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-test-${{ hashFiles('.github/workflows/ci.yml') }}
 
-      # 单测只 import 到这几个包，不必装全量 requirements（pycairo 等在 Linux 上要编译系统库）
+      # 单测只 import 到这几个包，不必装全量 requirements（pycairo 等在 Linux 上要编译系统库）。
+      # 注意：tests/test_context_manager.py 会真实构造 SummarizationMiddleware，
+      # 需要完整的 langchain（langchain-core 里没有 langchain.agents.middleware），
+      # 缺它时该用例会失败；langchain 是纯 Python 包，不引入系统库依赖。
       - name: Install test dependencies
         run: |
           pip install pytest \
             fastapi \
             pydantic \
+            "langchain>=1.2.10,<2.0.0" \
             langchain-core \
             mysql-connector-python \
             tavily-python \
