@@ -307,19 +307,26 @@ def test_build_agent_input_never_trims_query():
 # ---------------------------------------------------------------------------
 
 
-class _FakeChatModel:
-    """langchain 只依赖 _llm_type 决定近似 token 计数方式，这里给个最小假模型。"""
+def _fake_model() -> object:
+    """用 langchain-core 自带的假聊天模型，避免依赖 langchain 内部构造细节。
 
-    _llm_type = "fake-chat"
+    裸对象（只有一个 ``_llm_type``）在 langchain 1.2.x 能构造成功，
+    但 1.4.x 的 ``SummarizationMiddleware.__init__`` 会调用 ``model.with_retry(...)``
+    等方法，裸对象直接抛 AttributeError，用例会误报。使用真正的
+    ``BaseChatModel`` 子类，跨版本稳定。
+    """
+    from langchain_core.language_models.fake_chat_models import FakeListChatModel
+
+    return FakeListChatModel(responses=["fake summary"])
 
 
 def test_summarize_middleware_configures_and_degrades():
-    middleware = summarize_middleware(_FakeChatModel())
+    middleware = summarize_middleware(_fake_model())
     assert middleware is not None
     assert getattr(middleware, "trigger", None) == ("tokens", 80000)
     assert getattr(middleware, "keep", None) == ("messages", 20)
 
-    custom = summarize_middleware(_FakeChatModel(), trigger_tokens=1000, keep_messages=4)
+    custom = summarize_middleware(_fake_model(), trigger_tokens=1000, keep_messages=4)
     assert custom is not None
     assert custom.trigger == ("tokens", 1000)
     assert custom.keep == ("messages", 4)
