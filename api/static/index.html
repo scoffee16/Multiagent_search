@@ -149,6 +149,8 @@
   .log-tag.i { color: #c7d2fe; background: var(--accent-glow); }
   .log-dot.m { background: var(--teal); box-shadow: 0 0 5px rgba(45,212,191,.5); }
   .log-tag.m { color: var(--teal); background: var(--teal-bg); }
+  .log-dot.u { background: var(--text); box-shadow: 0 0 5px rgba(255,255,255,.25); }
+  .log-tag.u { color: var(--text-dim); background: rgba(255,255,255,.08); }
   .intent-badge {
     display: inline-flex; align-items: center; gap: 6px; margin-top: 3px;
     padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
@@ -339,8 +341,9 @@
 </header>
 
 <div class="input-bar">
-  <input id="queryInput" type="text" placeholder="输入分析问题，例如：帮我分析最近电商行业的热门品类趋势" />
-  <button class="btn btn-primary" id="sendBtn" onclick="sendTask()">▶ 发送新任务</button>
+  <input id="queryInput" type="text" placeholder="输入问题，回车发送；默认延续当前会话上下文，点「＋ 新会话」可另起一个" />
+  <button class="btn btn-primary" id="sendBtn" onclick="sendTask()">▶ 发送任务</button>
+  <button class="btn btn-ghost" onclick="startNewConversation()" title="另起一个会话，不沿用当前会话的上下文">＋ 新会话</button>
   <button class="btn btn-ghost" onclick="closeAllSessions()">清除全部</button>
 </div>
 
@@ -385,6 +388,7 @@ const tagMap = {
   intent:          { dot:'i', tag:'i', text:'意图' },
   timing:          { dot:'i', tag:'i', text:'耗时' },
   memory:          { dot:'m', tag:'m', text:'记忆' },
+  user:            { dot:'u', tag:'u', text:'提问' },
 };
 
 function createSession(threadId, query) {
@@ -402,7 +406,34 @@ function createSession(threadId, query) {
   };
   sessions[threadId] = session;
 
+  // 第一轮提问也记一条日志，和续聊时的「提问」保持一致
+  session.logs.push({
+    event: 'user', message: query, data: null,
+    timestamp: new Date().toISOString(),
+  });
+
   // 连 WebSocket
+  attachSessionSocket(session);
+
+  // 切换到此会话
+  switchSession(threadId);
+  scheduleFileRefresh();
+}
+
+// 连接（或重连）某个会话的 WebSocket。
+// 续聊时沿用同一个 thread_id，服务端据此命中 LangGraph checkpoint 里的历史消息。
+function attachSessionSocket(session) {
+  const threadId = session.id;
+  if (session.ws) {
+    const oldWs = session.ws;
+    try {
+      // 先摘掉旧连接的回调再关闭，避免旧连接的 close 事件把刚转为 running 的会话误标成 done
+      oldWs.onopen = null; oldWs.onmessage = null; oldWs.onclose = null; oldWs.onerror = null;
+      oldWs.close();
+    } catch (_) {}
+    session.ws = null;
+  }
+
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = `${proto}//${location.host}/ws/${threadId}`;
   const ws = new WebSocket(url);
@@ -462,11 +493,19 @@ function createSession(threadId, query) {
   };
   ws.onerror = () => { session.status = 'error'; updateWSStatus(); renderTabs(); };
   session.ws = ws;
+}
 
-  // 切换到此会话
-  switchSession(threadId);
-  renderTabs();
-  scheduleFileRefresh();
+// 等待 WebSocket 建立（续聊时先连上再发请求，避免漏掉任务开头的事件）
+function waitSocketOpen(ws, timeoutMs = 1200) {
+  return new Promise(resolve => {
+    if (!ws || ws.readyState === WebSocket.OPEN) { resolve(true); return; }
+    let settled = false;
+    const finish = ok => { if (!settled) { settled = true; resolve(ok); } };
+    ws.addEventListener('open', () => finish(true), { once: true });
+    ws.addEventListener('error', () => finish(false), { once: true });
+    ws.addEventListener('close', () => finish(false), { once: true });
+    setTimeout(() => finish(false), timeoutMs);
+  });
 }
 
 function switchSession(threadId) {
@@ -519,6 +558,7 @@ function closeAllSessions() {
 function renderTabs() {
   const bar = $('#tabBar');
   const ids = Object.keys(sessions);
+  updateSendButton();
   if (ids.length === 0) { bar.innerHTML = ''; return; }
 
   bar.innerHTML = ids.map(id => {
@@ -831,28 +871,107 @@ async function copyResult(id) {
   }
 }
 
-// ── 发送任务 ──
+// ── 发送任务：默认延续当前会话，只有点「＋ 新会话」后才另起一个 thread ──
 async function sendTask() {
   const input = $('#queryInput');
   const query = input.value.trim();
   if (!query) return;
 
+  const active = activeSessionId ? sessions[activeSessionId] : null;
+  if (active && active.status === 'running') {
+    alert('当前会话还在执行，等它完成后再继续提问；也可以点「＋ 新会话」另开一个。');
+    return;
+  }
+  const continueThreadId = active ? active.id : null;
+
+  // 续聊：先把这一轮提问记进日志、重连 WS（同一 thread_id），再发请求
+  if (continueThreadId) {
+    appendUserTurn(active, query);
+    attachSessionSocket(active);
+  }
+
   const btn = $('#sendBtn');
   btn.disabled = true; btn.textContent = '发送中...';
 
   try {
+    // 续聊：先等 WS 重新连上，再提交任务，避免漏掉任务开始阶段的事件
+    if (continueThreadId && sessions[continueThreadId] && sessions[continueThreadId].ws) {
+      await waitSocketOpen(sessions[continueThreadId].ws);
+    }
+    const payload = { query };
+    if (continueThreadId) payload.thread_id = continueThreadId;   // 关键：带上原会话的 thread_id
     const res = await fetch('/api/task', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
-    createSession(data.thread_id, query);
+    if (!res.ok || data.status !== 'started') {
+      throw new Error(data.detail || data.error || ('HTTP ' + res.status));
+    }
+    if (continueThreadId && sessions[continueThreadId]) {
+      switchSession(continueThreadId);
+    } else {
+      createSession(data.thread_id, query);
+    }
   } catch (err) {
+    if (continueThreadId && sessions[continueThreadId]) {
+      const s = sessions[continueThreadId];
+      s.status = 'error';
+      s.logs.push({
+        event: 'error', message: '发送失败：' + err.message,
+        data: null, timestamp: new Date().toISOString(),
+      });
+      renderLog(s);
+      renderTabs();
+    }
     alert('请求失败: ' + err.message);
   } finally {
-    btn.disabled = false; btn.textContent = '▶ 发送新任务';
     input.value = '';
     input.focus();
+    updateSendButton();
+  }
+}
+
+// 把用户这一轮提问追加进当前会话日志，并转回 running 状态
+function appendUserTurn(session, query) {
+  session.logs.push({
+    event: 'user',
+    message: query,
+    data: null,
+    timestamp: new Date().toISOString(),
+  });
+  session.status = 'running';
+  session.streamText = '';
+  session.streaming = false;
+  session._streamRaf = null;
+  if (activeSessionId === session.id) renderLog(session);
+  renderTabs();
+}
+
+// 另起一个新会话：仅取消当前选中，下一条消息会创建新 thread
+function startNewConversation() {
+  activeSessionId = null;
+  renderLog(null);
+  renderTabs();
+  const input = $('#queryInput');
+  input.value = '';
+  input.focus();
+}
+
+// 根据当前选中的会话状态刷新输入区按钮
+function updateSendButton() {
+  const btn = $('#sendBtn');
+  if (!btn) return;
+  const s = activeSessionId ? sessions[activeSessionId] : null;
+  if (s && s.status === 'running') {
+    btn.disabled = true;
+    btn.textContent = '⏳ 执行中...';
+  } else if (s) {
+    btn.disabled = false;
+    btn.textContent = '▶ 继续当前会话';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '▶ 发送任务';
   }
 }
 
